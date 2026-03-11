@@ -1,0 +1,13 @@
+# Python caches
+__pycache__/
+*.py[cod]
+
+# Generated per-wave artifacts (runtime outputs)
+factory/*/wave_*/
+runs/*/auto_decisions.json
+runs/*/final_decisions.json
+runs/*/human_overrides.json
+runs/*/run_state.json
+
+# macOS
+.DS_Store
