@@ -1,0 +1,138 @@
+{
+  "wave_id": "wave_001",
+  "mode": "advisory_window",
+  "records": [
+    {
+      "concept_id": "cell_a_concept_01",
+      "cell_id": "cell_a",
+      "auto_score": 69.5,
+      "auto_decision": "Iterate",
+      "final_decision": "Iterate",
+      "mode": "advisory_window",
+      "override": null,
+      "finalized_at": null,
+      "rationale": "Auto decision from weighted policy"
+    },
+    {
+      "concept_id": "cell_b_concept_01",
+      "cell_id": "cell_b",
+      "auto_score": 69.5,
+      "auto_decision": "Iterate",
+      "final_decision": "Iterate",
+      "mode": "advisory_window",
+      "override": null,
+      "finalized_at": null,
+      "rationale": "Auto decision from weighted policy"
+    },
+    {
+      "concept_id": "cell_c_concept_01",
+      "cell_id": "cell_c",
+      "auto_score": 69.5,
+      "auto_decision": "Iterate",
+      "final_decision": "Iterate",
+      "mode": "advisory_window",
+      "override": null,
+      "finalized_at": null,
+      "rationale": "Auto decision from weighted policy"
+    },
+    {
+      "concept_id": "cell_d_concept_01",
+      "cell_id": "cell_d",
+      "auto_score": 69.5,
+      "auto_decision": "Iterate",
+      "final_decision": "Iterate",
+      "mode": "advisory_window",
+      "override": null,
+      "finalized_at": null,
+      "rationale": "Auto decision from weighted policy"
+    },
+    {
+      "concept_id": "cell_a_concept_01",
+      "cell_id": "cell_a",
+      "auto_score": 69.5,
+      "auto_decision": "Iterate",
+      "final_decision": "Iterate",
+      "mode": "advisory_window",
+      "override": null,
+      "finalized_at": null,
+      "rationale": "Auto decision from weighted policy"
+    },
+    {
+      "concept_id": "cell_b_concept_01",
+      "cell_id": "cell_b",
+      "auto_score": 69.5,
+      "auto_decision": "Iterate",
+      "final_decision": "Iterate",
+      "mode": "advisory_window",
+      "override": null,
+      "finalized_at": null,
+      "rationale": "Auto decision from weighted policy"
+    },
+    {
+      "concept_id": "cell_c_concept_01",
+      "cell_id": "cell_c",
+      "auto_score": 69.5,
+      "auto_decision": "Iterate",
+      "final_decision": "Iterate",
+      "mode": "advisory_window",
+      "override": null,
+      "finalized_at": null,
+      "rationale": "Auto decision from weighted policy"
+    },
+    {
+      "concept_id": "cell_d_concept_01",
+      "cell_id": "cell_d",
+      "auto_score": 69.5,
+      "auto_decision": "Iterate",
+      "final_decision": "Iterate",
+      "mode": "advisory_window",
+      "override": null,
+      "finalized_at": null,
+      "rationale": "Auto decision from weighted policy"
+    },
+    {
+      "concept_id": "cell_a_concept_01",
+      "cell_id": "cell_a",
+      "auto_score": 69.5,
+      "auto_decision": "Iterate",
+      "final_decision": "Iterate",
+      "mode": "advisory_window",
+      "override": null,
+      "finalized_at": null,
+      "rationale": "Auto decision from weighted policy"
+    },
+    {
+      "concept_id": "cell_b_concept_01",
+      "cell_id": "cell_b",
+      "auto_score": 69.5,
+      "auto_decision": "Iterate",
+      "final_decision": "Iterate",
+      "mode": "advisory_window",
+      "override": null,
+      "finalized_at": null,
+      "rationale": "Auto decision from weighted policy"
+    },
+    {
+      "concept_id": "cell_c_concept_01",
+      "cell_id": "cell_c",
+      "auto_score": 69.5,
+      "auto_decision": "Iterate",
+      "final_decision": "Iterate",
+      "mode": "advisory_window",
+      "override": null,
+      "finalized_at": null,
+      "rationale": "Auto decision from weighted policy"
+    },
+    {
+      "concept_id": "cell_d_concept_01",
+      "cell_id": "cell_d",
+      "auto_score": 69.5,
+      "auto_decision": "Iterate",
+      "final_decision": "Iterate",
+      "mode": "advisory_window",
+      "override": null,
+      "finalized_at": null,
+      "rationale": "Auto decision from weighted policy"
+    }
+  ]
+}

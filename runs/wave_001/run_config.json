@@ -1,0 +1,66 @@
+{
+  "wave_id": "wave_001",
+  "cells": [
+    {
+      "cell_id": "cell_a",
+      "discovery_domain": "sort",
+      "prototype_domain": "sort",
+      "concept_count": 3
+    },
+    {
+      "cell_id": "cell_b",
+      "discovery_domain": "block",
+      "prototype_domain": "block",
+      "concept_count": 3
+    },
+    {
+      "cell_id": "cell_c",
+      "discovery_domain": "color_match",
+      "prototype_domain": "match3",
+      "concept_count": 3
+    },
+    {
+      "cell_id": "cell_d",
+      "discovery_domain": "spatial",
+      "prototype_domain": "spatial",
+      "concept_count": 3
+    }
+  ],
+  "routing": {
+    "cloud_roles": [
+      "fusion_director",
+      "fusion_designer_conservative",
+      "fusion_designer_novelty",
+      "prototype_critic",
+      "portfolio_scorer"
+    ],
+    "local_roles": [
+      "prototype_builder_web"
+    ]
+  },
+  "decision_policy": {
+    "weights": {
+      "clarity": 0.25,
+      "depth": 0.2,
+      "level_scalability": 0.2,
+      "production_feasibility": 0.15,
+      "retention_potential": 0.1,
+      "novelty": 0.1
+    },
+    "thresholds": {
+      "expand_min": 80,
+      "iterate_min": 60,
+      "kill_max": 59
+    },
+    "hard_gates": {
+      "playable_required": true,
+      "min_clarity": 3.5
+    }
+  },
+  "human_feedback": {
+    "enabled": true,
+    "mode": "advisory_window",
+    "timeout_hours": 24,
+    "override_scope": "per_concept"
+  }
+}

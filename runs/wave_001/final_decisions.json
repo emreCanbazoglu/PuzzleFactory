@@ -1,0 +1,50 @@
+[
+  {
+    "concept_id": "cell_a_concept_01",
+    "cell_id": "cell_a",
+    "auto_score": 69.5,
+    "auto_decision": "Iterate",
+    "final_decision": "Iterate",
+    "mode": "advisory_window",
+    "override": {
+      "concept_id": "cell_a_concept_01",
+      "decision": "Iterate",
+      "author": "human"
+    },
+    "finalized_at": "2026-03-11T08:09:40.660295+00:00",
+    "rationale": "Finalized by advisory override"
+  },
+  {
+    "concept_id": "cell_b_concept_01",
+    "cell_id": "cell_b",
+    "auto_score": 69.5,
+    "auto_decision": "Iterate",
+    "final_decision": "Iterate",
+    "mode": "advisory_window",
+    "override": null,
+    "finalized_at": "2026-03-11T08:09:40.660515+00:00",
+    "rationale": "Advisory timeout fallback to auto decision"
+  },
+  {
+    "concept_id": "cell_c_concept_01",
+    "cell_id": "cell_c",
+    "auto_score": 69.5,
+    "auto_decision": "Iterate",
+    "final_decision": "Iterate",
+    "mode": "advisory_window",
+    "override": null,
+    "finalized_at": "2026-03-11T08:09:40.660521+00:00",
+    "rationale": "Advisory timeout fallback to auto decision"
+  },
+  {
+    "concept_id": "cell_d_concept_01",
+    "cell_id": "cell_d",
+    "auto_score": 69.5,
+    "auto_decision": "Iterate",
+    "final_decision": "Iterate",
+    "mode": "advisory_window",
+    "override": null,
+    "finalized_at": "2026-03-11T08:09:40.660523+00:00",
+    "rationale": "Advisory timeout fallback to auto decision"
+  }
+]

@@ -1,0 +1,15 @@
+{
+  "wave_id": "wave_001",
+  "cell_id": "cell_c",
+  "concept_id": "cell_c_concept_01",
+  "scores": {
+    "clarity": 3.5,
+    "depth": 3.4,
+    "level_scalability": 3.6,
+    "production_feasibility": 3.8,
+    "retention_potential": 3.2,
+    "novelty": 3.1
+  },
+  "prototype_domain": "match3",
+  "playable": true
+}
