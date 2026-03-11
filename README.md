@@ -89,7 +89,13 @@ python3 .specify/scripts/python/validate_run_config.py runs/wave_001/run_config.
 python3 .specify/scripts/python/check_template_fields.py
 ```
 
-5. Resume from first unchecked task in the active feature `tasks.md`.
+5. Validate game-library readiness before running a wave:
+
+```bash
+python3 .specify/scripts/python/validate_game_library.py
+```
+
+6. Resume from first unchecked task in the active feature `tasks.md`.
 
 ## Wave 001 State Tracking
 

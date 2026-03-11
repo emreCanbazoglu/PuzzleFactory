@@ -33,3 +33,4 @@
 17. Added a fusion director brief stage and passed its handoff into downstream concept/spec generation.
 18. Added a human review artifact per cell so feedback is part of the run output.
 19. Upgraded the Pixel Flow! + Screw Jam prototype from a mechanic demo to a conveyor-and-dock playable slice with level progression.
+20. Added game-library validation with readiness statuses and human clarification questions under `factory/references/validation/`.

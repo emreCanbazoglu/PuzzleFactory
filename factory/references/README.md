@@ -15,3 +15,22 @@ Rules:
   - fun points
 
 The runtime should treat these notes as first-class guidance for deconstruction and fusion.
+
+## Validation
+
+Validate the library before using entries in a wave:
+
+```bash
+python3 .specify/scripts/python/validate_game_library.py
+```
+
+Outputs:
+
+- `factory/references/validation/game_library_validation.md`
+- `factory/references/validation/game_library_validation.json`
+
+Statuses:
+
+- `ready`: factual record and design interpretation are strong enough for deconstruction/fusion.
+- `needs_human_clarification`: schema is usable, but the design understanding is too weak.
+- `invalid`: required factual data is missing or malformed.

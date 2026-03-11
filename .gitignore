@@ -4,6 +4,8 @@ __pycache__/
 
 # Generated per-wave artifacts (runtime outputs)
 factory/*/wave_*/
+factory/references/validation/game_library_validation.json
+factory/references/validation/game_library_validation.md
 runs/*/auto_decisions.json
 runs/*/final_decisions.json
 runs/*/human_overrides.json
