@@ -51,6 +51,47 @@ PAIR_PRESETS = {
         "variation_1": "Dispatch colored boxes from top-only dock queues onto the conveyor to collect exposed screws from a static layered board.",
         "variation_2": "Use the conveyor as a rotating assignment system where each dispatched box commits to one plate, so plate-collapse order matters more than immediate collection count.",
         "variation_3": "Focus on queue-clearing decisions: sometimes the right move is to send a weak front box only to surface the high-value color needed for the next reveal state.",
+        "variations": [
+            {
+                "id": "variation_01",
+                "label": "Collector Loop",
+                "role": "conservative",
+                "core_verb": "dispatch colored boxes onto a conveyor to collect exposed matching screws",
+                "main_interaction": "Send colored screwboxes from dock queues onto a surrounding conveyor so they orbit the layered board and collect matching exposed screws automatically.",
+                "objective": "Clear the layered screw board by dispatching the right boxes in the right order before queue and overflow pressure collapses the run.",
+                "core_loop": "read exposed screws and top queue colors -> dispatch one box -> orbit and collect matching screws -> plates collapse and reveal new screws -> reassess",
+                "failure_pressure": "sending the wrong box wastes a full orbit, preserves bad exposure order, and builds queue or overflow pressure",
+                "board_setup": "A layered Screw Jam-style plate board sits inside a Pixel Flow-style surrounding conveyor. Top-only dock queues feed colored boxes onto the loop while exposed screws wait on the current outer layer of each plate.",
+                "object_rules": "Boxes have a color and capacity. During one full lap they collect only exposed matching screws. Clearing all screws from a plate collapses it and reveals the next layer. Returned boxes or unmatched pickups create pressure in the dock or overflow system.",
+                "input_behavior": "Tap only the front box in a dock lane to send it around the conveyor; the box auto-collects exposed matching screws during its lap.",
+            },
+            {
+                "id": "variation_02",
+                "label": "Plate Claim Loop",
+                "role": "conservative",
+                "core_verb": "assign one moving box to one plate and commit to its collapse route",
+                "main_interaction": "Dispatch a colored box that commits to one chosen plate for the whole lap, collecting only that plate's exposed screws while giving up other opportunities.",
+                "objective": "Collapse the layered plates in the right order so committed laps unlock better future plates instead of trapping the queue.",
+                "core_loop": "read exposed screws and plate priorities -> assign a box to one plate -> resolve one committed lap -> collapsed plate reveals new route -> reassess next commitment",
+                "failure_pressure": "a wrong commitment spends a full lap on low-value screws and delays the plate whose collapse would have opened the board",
+                "board_setup": "A layered plate board sits inside a conveyor, but each dispatched box visibly locks onto one plate for its trip rather than roaming freely across all exposed screws.",
+                "object_rules": "A box can collect only from its assigned plate during that lap. Finishing a plate collapses it and reconfigures access. Queue pressure rises because each wrong commitment costs an entire circuit.",
+                "input_behavior": "Tap a front-box, then tap one eligible plate to assign that lap before the box enters the conveyor.",
+            },
+            {
+                "id": "variation_03",
+                "label": "Queue Prep Loop",
+                "role": "novelty",
+                "core_verb": "sacrifice short-term collection to prepare the next ideal box order",
+                "main_interaction": "Sometimes dispatch a low-value front box mainly to cycle the dock and surface the color-capacity combo needed for the next exposed screws.",
+                "objective": "Clear the board by managing future queue state as aggressively as current plate state.",
+                "core_loop": "inspect exposed screws and future queue -> dispatch current front box for setup or value -> resolve one lap -> next queue front changes -> exploit the prepared board state",
+                "failure_pressure": "greedy immediate collection can bury the only future color-capacity match and force overflow later",
+                "board_setup": "The layered board and surrounding conveyor remain the same, but the main challenge shifts toward managing the top-only queue order instead of just matching current exposures.",
+                "object_rules": "Every dispatched box changes both the board and the future queue. Some boxes are sent mainly to surface the next correct collector rather than to maximize the current lap's screw count.",
+                "input_behavior": "Tap only the front box in a dock lane, knowing the real purpose of the move may be queue preparation rather than immediate collection.",
+            },
+        ],
     },
     ("ios-1482155847-royal-match", "ios-1514542157-water-sort-puzzle"): {
         "concept_name": "Cascade Decant",
@@ -185,6 +226,21 @@ def _pair_preset(context: dict[str, Any]) -> dict[str, str]:
     return PAIR_PRESETS.get(ids, {})
 
 
+def _variation_specs(context: dict[str, Any]) -> list[dict[str, Any]]:
+    preset = _pair_preset(context)
+    return list(preset.get("variations", []))
+
+
+def _selected_variation(context: dict[str, Any]) -> dict[str, Any] | None:
+    selected_id = context.get("selected_variation_id")
+    if not selected_id:
+        return None
+    for variation in _variation_specs(context):
+        if variation.get("id") == selected_id:
+            return variation
+    return None
+
+
 def _joined(items: list[str], fallback: str) -> str:
     clean = [item for item in items if item]
     return ", ".join(clean) if clean else fallback
@@ -197,6 +253,7 @@ def _pick(items: list[str], fallback: str) -> str:
 def _fusion_summary(context: dict[str, Any]) -> dict[str, str]:
     sources = [_normalize_game(game) for game in _source_games(context)]
     preset = _pair_preset(context)
+    selected_variation = _selected_variation(context)
     if len(sources) < 2:
         return {
             "concept_name": preset.get("concept_name", f"{context.get('cell_id', 'cell')} Fusion"),
@@ -257,27 +314,27 @@ def _fusion_summary(context: dict[str, Any]) -> dict[str, str]:
     source_a_functions = _joined(first["system_functions"], first["notes"])
     source_b_functions = _joined(second["system_functions"], second["notes"])
     replaceable_surface = _joined(first["replaceable_elements"] + second["replaceable_elements"], "source presentation details")
-    new_unified_verb = preset.get(
+    new_unified_verb = (selected_variation or {}).get("core_verb") or preset.get(
         "core_verb",
         f"apply {first['name']}'s board pressure through {second['name']}'s access logic",
     )
-    main_interaction = preset.get(
+    main_interaction = (selected_variation or {}).get("main_interaction") or preset.get(
         "main_interaction",
         f"Use one interaction model that preserves {first['name']}'s { _pick(first['system_functions'], first['core_verb']) } and {second['name']}'s { _pick(second['system_functions'], second['core_verb']) }.",
     )
-    objective = preset.get(
+    objective = (selected_variation or {}).get("objective") or preset.get(
         "objective",
         f"Preserve {first['name']}'s {_pick(first['winning_points'], first['main_goal'] or first['notes'])} while also preserving {second['name']}'s {_pick(second['winning_points'], second['main_goal'] or second['notes'])}.",
     )
-    core_loop = preset.get(
+    core_loop = (selected_variation or {}).get("core_loop") or preset.get(
         "core_loop",
         f"read exposed state -> commit the unified action -> resolve board update and pressure -> reassess the next layer",
     )
-    failure_pressure = preset.get(
+    failure_pressure = (selected_variation or {}).get("failure_pressure") or preset.get(
         "failure_pressure",
         f"{first['pressure']} plus {second['pressure']}",
     )
-    input_behavior = preset.get(
+    input_behavior = (selected_variation or {}).get("input_behavior") or preset.get(
         "input_behavior",
         "Use a single unified input that preserves both source games' strategic functions instead of copying both source verbs.",
     )
@@ -313,11 +370,11 @@ def _fusion_summary(context: dict[str, Any]) -> dict[str, str]:
         "why_understandable",
         "The board still communicates one clear action, one clear update, and one clear failure channel after every turn.",
     )
-    board_setup = preset.get(
+    board_setup = (selected_variation or {}).get("board_setup") or preset.get(
         "board_setup",
         f"A compact board combines {first['board_topology']} with {second['board_topology']} while keeping a single readable objective.",
     )
-    object_rules = preset.get(
+    object_rules = (selected_variation or {}).get("object_rules") or preset.get(
         "object_rules",
         "Every action must advance both source functions at once; if a rule only expresses one source superficially, it should be removed.",
     )
@@ -491,14 +548,68 @@ def fill_template(template_text: str, context: dict[str, Any]) -> str:
     return "\n".join(out).rstrip() + "\n"
 
 
+def generate_director_plan(context: dict[str, Any]) -> dict[str, Any]:
+    fusion = _fusion_summary(context)
+    variations = _variation_specs(context)
+    return {
+        "wave_id": context.get("wave_id", ""),
+        "cell_id": context.get("cell_id", ""),
+        "sources": [
+            {"id": game["id"], "name": game["name"]}
+            for game in _source_games(context)
+        ],
+        "new_unified_verb": fusion["new_unified_verb"],
+        "source_a_functions": fusion["source_a_functions"],
+        "source_b_functions": fusion["source_b_functions"],
+        "replaceable_surface": fusion["replaceable_surface"],
+        "literal_fusion_why_weaker": fusion["literal_fusion_why_weaker"],
+        "variation_targets": variations if variations else [
+            {"id": "variation_01", "label": "Primary variation", "role": "conservative", "summary": fusion["variation_1"]},
+            {"id": "variation_02", "label": "Secondary variation", "role": "conservative", "summary": fusion["variation_2"]},
+            {"id": "variation_03", "label": "Tertiary variation", "role": "novelty", "summary": fusion["variation_3"]},
+        ],
+    }
+
+
+def render_director_plan(plan: dict[str, Any]) -> str:
+    lines = [
+        "# Director Plan",
+        "",
+        f"Wave: {plan['wave_id']}",
+        f"Cell: {plan['cell_id']}",
+        f"Sources: {', '.join(source['name'] for source in plan['sources'])}",
+        "",
+        "Pre-Ideation Guardrails:",
+        f"- New Unified Player Verb: {plan['new_unified_verb']}",
+        f"- Source A Functions To Preserve: {plan['source_a_functions']}",
+        f"- Source B Functions To Preserve: {plan['source_b_functions']}",
+        f"- Replaceable Surface Elements: {plan['replaceable_surface']}",
+        f"- Why Literal Fusion Is Weaker: {plan['literal_fusion_why_weaker']}",
+        "",
+        "Variation Targets:",
+    ]
+    for idx, variation in enumerate(plan["variation_targets"], start=1):
+        lines.append(f"{idx}. {variation.get('label', variation.get('id', 'variation'))}")
+        if "summary" in variation:
+            lines.append(f"   - Summary: {variation['summary']}")
+        for key in ("core_verb", "main_interaction", "objective", "failure_pressure"):
+            if variation.get(key):
+                label = key.replace("_", " ").title()
+                lines.append(f"   - {label}: {variation[key]}")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def _stage_prompt(role_text: str, template_text: str, context: dict[str, Any], artifact_type: str) -> str:
     director_brief = context.get("director_brief", "").strip()
+    director_plan = context.get("director_plan_markdown", "").strip()
     return (
         "You are an execution agent in PuzzleFusionFactory.\n"
         "Follow the role instructions exactly and output only markdown.\n\n"
         f"Role instructions:\n{role_text}\n\n"
         f"Artifact type: {artifact_type}\n"
         f"Cell context JSON: {json.dumps(context, ensure_ascii=True)}\n\n"
+        + (f"Director plan:\n{director_plan}\n\n" if director_plan else "")
         + (f"Director brief:\n{director_brief}\n\n" if director_brief else "")
         +
         "Fill this template with concrete content and keep all headings/fields:\n"

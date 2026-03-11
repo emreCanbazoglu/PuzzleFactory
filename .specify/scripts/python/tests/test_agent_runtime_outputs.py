@@ -7,7 +7,7 @@ SYS_PATH = ROOT / ".specify" / "scripts" / "python"
 if str(SYS_PATH) not in sys.path:
     sys.path.append(str(SYS_PATH))
 
-from agent_runtime import generate_director_brief, generate_prototype_html, generate_text_artifact  # noqa: E402
+from agent_runtime import generate_director_brief, generate_director_plan, generate_prototype_html, generate_text_artifact, render_director_plan  # noqa: E402
 
 
 class TestAgentRuntimeOutputs(unittest.TestCase):
@@ -77,6 +77,24 @@ class TestAgentRuntimeOutputs(unittest.TestCase):
         self.assertIn("Why Literal Fusion Is Weaker", brief)
         self.assertIn("Variation Targets For This Cell", brief)
 
+    def test_director_plan_persists_ranked_variations(self):
+        context = {
+            "wave_id": "wave_001",
+            "cell_id": "cell_a",
+            "concept_count": 3,
+            "source_games": [
+                {"id": "ios-6751056652-pixel-flow", "name": "Pixel Flow!", "mechanics": ["queue_sort"], "human_notes": {}},
+                {"id": "ios-6471490579-screw-jam", "name": "Screw Jam", "mechanics": ["sequence_constraint"], "human_notes": {}},
+            ],
+        }
+        plan = generate_director_plan(context)
+        markdown = render_director_plan(plan)
+
+        self.assertEqual(len(plan["variation_targets"]), 3)
+        self.assertIn("Collector Loop", markdown)
+        self.assertIn("Plate Claim Loop", markdown)
+        self.assertIn("Queue Prep Loop", markdown)
+
     def test_generated_prototype_is_not_step_placeholder(self):
         html = generate_prototype_html(
             {
@@ -97,6 +115,7 @@ class TestAgentRuntimeOutputs(unittest.TestCase):
         context = {
             "wave_id": "wave_001",
             "cell_id": "cell_a",
+            "selected_variation_id": "variation_01",
             "source_games": [
                 {"id": "ios-6751056652-pixel-flow", "name": "Pixel Flow!", "mechanics": ["queue_sort"], "human_notes": {}},
                 {"id": "ios-6471490579-screw-jam", "name": "Screw Jam", "mechanics": ["sequence_constraint"], "human_notes": {}},
@@ -113,6 +132,38 @@ class TestAgentRuntimeOutputs(unittest.TestCase):
 
         self.assertIn("Tap only the front box in a dock lane", content)
         self.assertNotIn("Click an exposed screw", content)
+
+    def test_variation_selection_changes_concept_output(self):
+        base = {
+            "wave_id": "wave_001",
+            "cell_id": "cell_a",
+            "source_games": [
+                {"id": "ios-6751056652-pixel-flow", "name": "Pixel Flow!", "mechanics": ["queue_sort"], "human_notes": {}},
+                {"id": "ios-6471490579-screw-jam", "name": "Screw Jam", "mechanics": ["sequence_constraint"], "human_notes": {}},
+            ],
+        }
+        context_a = dict(base, selected_variation_id="variation_01")
+        context_b = dict(base, selected_variation_id="variation_02")
+
+        content_a, _, _ = generate_text_artifact(
+            repo_root=ROOT,
+            role="fusion_designer_conservative",
+            artifact_type="concept_card",
+            context=context_a,
+            profile={"provider": "mock", "model": "mock", "name": "cloud"},
+            config={"execution": {"allow_mock_fallback": True}},
+        )
+        content_b, _, _ = generate_text_artifact(
+            repo_root=ROOT,
+            role="fusion_designer_conservative",
+            artifact_type="concept_card",
+            context=context_b,
+            profile={"provider": "mock", "model": "mock", "name": "cloud"},
+            config={"execution": {"allow_mock_fallback": True}},
+        )
+
+        self.assertIn("collect exposed matching screws", content_a)
+        self.assertIn("commits to one chosen plate", content_b)
 
 
 if __name__ == "__main__":

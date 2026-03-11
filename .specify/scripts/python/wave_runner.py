@@ -7,9 +7,11 @@ from pathlib import Path
 from agent_runtime import (
     deterministic_scores,
     generate_director_brief,
+    generate_director_plan,
     generate_human_review_stub,
     generate_prototype_html,
     generate_text_artifact,
+    render_director_plan,
     write_metadata,
 )
 from game_library import resolve_games
@@ -79,6 +81,28 @@ def run_cell(repo_root: Path, cfg: dict, wave_id: str, cell: dict) -> list[str]:
 
     outputs: list[str] = []
 
+    director_plan = generate_director_plan(context)
+    context["director_plan"] = director_plan
+    context["director_plan_markdown"] = render_director_plan(director_plan)
+    director_plan_path = cell_output_path(repo_root, "concepts", wave_id, cid, "director_plan.md")
+    _write_text(director_plan_path, context["director_plan_markdown"])
+    outputs.append(str(director_plan_path))
+    director_plan_meta = _metadata_path_for(director_plan_path)
+    write_metadata(
+        metadata_path=director_plan_meta,
+        wave_id=wave_id,
+        cell_id=cid,
+        role="fusion_director",
+        template_name="director_plan_builtin",
+        profile=resolve_profile_for_role(cfg, "fusion_director"),
+        artifact_path=director_plan_path,
+        fallback_used=True,
+    )
+    outputs.append(str(director_plan_meta))
+    director_plan_json_path = cell_output_path(repo_root, "concepts", wave_id, cid, "director_plan.json")
+    director_plan_json_path.write_text(json.dumps(director_plan, indent=2) + "\n", encoding="utf-8")
+    outputs.append(str(director_plan_json_path))
+
     director_brief = generate_director_brief(context)
     context["director_brief"] = director_brief
     director_path = cell_output_path(repo_root, "concepts", wave_id, cid, "director_brief.md")
@@ -128,35 +152,40 @@ def run_cell(repo_root: Path, cfg: dict, wave_id: str, cell: dict) -> list[str]:
     )
     outputs.append(str(review_meta))
 
-    # Stage 2: concept design (conservative + novelty then merge)
-    ap1, mp1 = _generate_stage_text(
-        repo_root=repo_root,
-        cfg=cfg,
-        wave_id=wave_id,
-        cell=cell,
-        role="fusion_designer_conservative",
-        artifact_type="concept_card",
-        area="concepts",
-        filename="concept_card_conservative.md",
-        context=context,
-    )
-    ap2, mp2 = _generate_stage_text(
-        repo_root=repo_root,
-        cfg=cfg,
-        wave_id=wave_id,
-        cell=cell,
-        role="fusion_designer_novelty",
-        artifact_type="concept_card",
-        area="concepts",
-        filename="concept_card_novelty.md",
-        context=context,
-    )
-    outputs.extend([ap1, mp1, ap2, mp2])
+    # Stage 2: concept design from ranked director variations
+    concept_paths: list[str] = []
+    concept_variations = director_plan.get("variation_targets", [])[: context["concept_count"]]
+    if not concept_variations:
+        concept_variations = [{"id": "variation_01", "role": "conservative"}]
+    for idx, variation in enumerate(concept_variations, start=1):
+        variation_context = dict(context)
+        variation_context["selected_variation_id"] = variation.get("id")
+        variation_context["selected_variation"] = variation
+        role = (
+            "fusion_designer_novelty"
+            if variation.get("role") == "novelty"
+            else "fusion_designer_conservative"
+        )
+        ap, mp = _generate_stage_text(
+            repo_root=repo_root,
+            cfg=cfg,
+            wave_id=wave_id,
+            cell=cell,
+            role=role,
+            artifact_type="concept_card",
+            area="concepts",
+            filename=f"concept_card_{idx:02d}.md",
+            context=variation_context,
+        )
+        outputs.extend([ap, mp])
+        concept_paths.append(ap)
 
     chosen_path = cell_output_path(repo_root, "concepts", wave_id, cid, "concept_card.md")
-    chosen_content = Path(ap1).read_text(encoding="utf-8")
+    chosen_content = Path(concept_paths[0]).read_text(encoding="utf-8")
     _write_text(chosen_path, chosen_content)
     outputs.append(str(chosen_path))
+    context["selected_variation_id"] = concept_variations[0].get("id")
+    context["selected_variation"] = concept_variations[0]
 
     # Stage 3: prototype spec
     ap, mp = _generate_stage_text(
