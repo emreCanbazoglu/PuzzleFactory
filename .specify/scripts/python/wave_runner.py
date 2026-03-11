@@ -6,10 +6,12 @@ from pathlib import Path
 
 from agent_runtime import (
     deterministic_scores,
+    generate_director_brief,
     generate_prototype_html,
     generate_text_artifact,
     write_metadata,
 )
+from game_library import resolve_games
 from model_router import resolve_profile_for_role
 from path_guard import cell_output_path
 from run_state import add_cell_artifact, load_or_init_state, now_iso, set_cell_status, write_state
@@ -64,16 +66,35 @@ def _generate_stage_text(
 
 def run_cell(repo_root: Path, cfg: dict, wave_id: str, cell: dict) -> list[str]:
     cid = cell["cell_id"]
+    source_games = resolve_games(repo_root, cell.get("source_game_ids", []))
     context = {
         "wave_id": wave_id,
         "cell_id": cid,
         "discovery_domain": cell.get("discovery_domain", "hybrid"),
         "prototype_domain": cell.get("prototype_domain", "hybrid"),
         "concept_count": cell.get("concept_count", 3),
-        "reference_game": "game_library_seed",
+        "source_games": source_games,
     }
 
     outputs: list[str] = []
+
+    director_brief = generate_director_brief(context)
+    context["director_brief"] = director_brief
+    director_path = cell_output_path(repo_root, "concepts", wave_id, cid, "director_brief.md")
+    _write_text(director_path, director_brief)
+    outputs.append(str(director_path))
+    director_meta = _metadata_path_for(director_path)
+    write_metadata(
+        metadata_path=director_meta,
+        wave_id=wave_id,
+        cell_id=cid,
+        role="fusion_director",
+        template_name="director_brief_builtin",
+        profile=resolve_profile_for_role(cfg, "fusion_director"),
+        artifact_path=director_path,
+        fallback_used=True,
+    )
+    outputs.append(str(director_meta))
 
     # Stage 1: mechanic extraction
     ap, mp = _generate_stage_text(
@@ -165,7 +186,8 @@ def run_cell(repo_root: Path, cfg: dict, wave_id: str, cell: dict) -> list[str]:
     outputs.extend([ap, mp])
 
     # Scorecard for decision engine
-    scores = deterministic_scores(cid, context["prototype_domain"])
+    score_seed = "-".join(game["id"] for game in source_games)
+    scores = deterministic_scores(cid, score_seed)
     scorecard_path = cell_output_path(repo_root, "scorecards", wave_id, cid, "scorecard.json")
     scorecard_path.write_text(
         json.dumps(
@@ -175,6 +197,7 @@ def run_cell(repo_root: Path, cfg: dict, wave_id: str, cell: dict) -> list[str]:
                 "concept_id": f"{cid}_concept_01",
                 "scores": scores,
                 "prototype_domain": context["prototype_domain"],
+                "source_games": [game["name"] for game in source_games],
                 "playable": True,
             },
             indent=2,

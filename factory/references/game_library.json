@@ -1,0 +1,145 @@
+[
+  {
+    "id": "ios-6751056652-pixel-flow",
+    "name": "Pixel Flow!",
+    "genre": "games",
+    "mechanics": [
+      "queue_sort",
+      "path_creation",
+      "limited_moves"
+    ],
+    "description": null,
+    "detail_text": null,
+    "board_type": "grid",
+    "session_length": "3-5 minutes",
+    "store_links": {
+      "app_store": "https://apps.apple.com/us/app/pixel-flow/id6751056652?uo=4",
+      "google_play": null
+    },
+    "screenshot_urls": [
+      "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/72/93/5c/72935c74-649f-189d-8767-7cf3587f2243/Image_1.jpg/300x650bb.webp",
+      "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/c3/16/2e/c3162e97-c9b2-b52e-3fc4-348da2a758eb/Image_2.jpg/300x650bb.webp"
+    ],
+    "source_metadata": {
+      "source": "store_ingestion",
+      "source_link": "https://apps.apple.com/us/app/pixel-flow/id6751056652?uo=2",
+      "provider": "app_store",
+      "ingested_at": "2026-03-09"
+    },
+    "last_verified_at": "2026-03-09"
+  },
+  {
+    "id": "ios-6471490579-screw-jam",
+    "name": "Screw Jam",
+    "genre": "games",
+    "mechanics": [
+      "sequence_constraint",
+      "restricted_space",
+      "limited_moves"
+    ],
+    "description": null,
+    "detail_text": null,
+    "board_type": "grid",
+    "session_length": "3-5 minutes",
+    "store_links": {
+      "app_store": "https://apps.apple.com/us/app/screw-jam/id6471490579?uo=4",
+      "google_play": null
+    },
+    "screenshot_urls": [
+      "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/df/d8/f8/dfd8f83c-3372-a656-e28c-ebb942f95da0/4abac71e-70c2-4a9c-a257-1aff7a11a745_13.png/392x696bb.png",
+      "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/a5/59/52/a55952d0-508f-78f5-cfe9-d050a917fde5/92fa6a65-f296-4e69-9313-63c2b3542a8c_33.png/392x696bb.png"
+    ],
+    "source_metadata": {
+      "source": "store_ingestion",
+      "source_link": "https://apps.apple.com/tr/app/screw-jam/id6471490579",
+      "provider": "app_store",
+      "ingested_at": "2026-03-09",
+      "inference_confidence": "high"
+    },
+    "last_verified_at": "2026-03-09"
+  },
+  {
+    "id": "ios-1514542157-water-sort-puzzle",
+    "name": "Water Sort Puzzle",
+    "genre": "games",
+    "mechanics": [
+      "container_sort",
+      "color_sort",
+      "restricted_space",
+      "limited_moves"
+    ],
+    "description": null,
+    "detail_text": null,
+    "board_type": "container",
+    "session_length": "3-5 minutes",
+    "store_links": {
+      "app_store": "https://apps.apple.com/us/app/water-sort-puzzle/id1514542157?uo=4",
+      "google_play": null
+    },
+    "screenshot_urls": [
+      "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource122/v4/2f/7a/48/2f7a4823-562b-3bd4-d35c-39e30c271e75/dd6cbb98-d86c-4f6f-9407-592fe09e19d5_WSP_SCR_1_V28.1_BGNight_Castle_1242x2208.jpg/392x696bb.jpg"
+    ],
+    "source_metadata": {
+      "source": "store_ingestion",
+      "source_link": "https://apps.apple.com/us/app/water-sort-puzzle/id1514542157",
+      "provider": "app_store",
+      "ingested_at": "2026-03-09"
+    },
+    "last_verified_at": "2026-03-09"
+  },
+  {
+    "id": "ios-1482155847-royal-match",
+    "name": "Royal Match",
+    "genre": "games",
+    "mechanics": [
+      "objective_variation",
+      "limited_moves"
+    ],
+    "description": null,
+    "detail_text": null,
+    "board_type": "grid",
+    "session_length": "3-5 minutes",
+    "store_links": {
+      "app_store": "https://apps.apple.com/us/app/royal-match/id1482155847?uo=4",
+      "google_play": null
+    },
+    "screenshot_urls": [
+      "https://is1-ssl.mzstatic.com/image/thumb/Purple116/v4/89/2e/1a/892e1a61-b669-b9d3-26ee-d5b2fcc01934/edede7e9-6c2e-401d-804d-32d96e7b4641_iphone-8.jpg/392x696bb.jpg"
+    ],
+    "source_metadata": {
+      "source": "store_ingestion",
+      "source_link": "https://apps.apple.com/us/app/royal-match/id1482155847",
+      "provider": "app_store",
+      "ingested_at": "2026-03-09"
+    },
+    "last_verified_at": "2026-03-09"
+  },
+  {
+    "id": "ios-1617391485-block-blast",
+    "name": "Block Blast!",
+    "genre": "games",
+    "mechanics": [
+      "tile_cascade",
+      "block_push",
+      "limited_moves"
+    ],
+    "description": null,
+    "detail_text": null,
+    "board_type": "grid",
+    "session_length": "3-5 minutes",
+    "store_links": {
+      "app_store": "https://apps.apple.com/us/app/block-blast/id1617391485?uo=4",
+      "google_play": null
+    },
+    "screenshot_urls": [
+      "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/2a/76/ee/2a76ee57-90a6-9c88-7393-b77afd3b6508/4ac25f40-0f18-43c2-8be8-b3d2018fe240_2048X2732_1.png/576x768bb.png"
+    ],
+    "source_metadata": {
+      "source": "store_ingestion",
+      "source_link": "https://apps.apple.com/us/app/block-blast/id1617391485",
+      "provider": "app_store",
+      "ingested_at": "2026-03-09"
+    },
+    "last_verified_at": "2026-03-09"
+  }
+]

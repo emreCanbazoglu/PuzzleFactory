@@ -26,3 +26,8 @@
 10. Implemented agent runtime integration with role/template-driven generation and hybrid model routing.
 11. Added per-artifact runtime metadata envelopes and deterministic fallback behavior.
 12. Re-ran full wave pipeline and expanded test suite for routing/runtime coverage.
+13. Grounded cells in specific source games via the internal game library.
+14. Replaced generic concept/spec text with concrete fusion descriptions such as Pixel Flow! + Screw Jam.
+15. Replaced the inert prototype stub with a deterministic blocker-removal puzzle that has win, lose, and reset states.
+16. Expanded agent role files into procedural instructions with explicit quality rules.
+17. Added a fusion director brief stage and passed its handoff into downstream concept/spec generation.

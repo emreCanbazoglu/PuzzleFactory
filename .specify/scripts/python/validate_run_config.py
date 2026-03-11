@@ -29,6 +29,11 @@ def validate(path: Path) -> None:
         for key in ("cell_id", "discovery_domain", "prototype_domain"):
             if not isinstance(cell.get(key), str) or not cell[key].strip():
                 fail(f"cells[{idx}].{key} must be a non-empty string")
+        source_game_ids = cell.get("source_game_ids")
+        if not isinstance(source_game_ids, list) or len(source_game_ids) < 2:
+            fail(f"cells[{idx}].source_game_ids must be an array with at least 2 game ids")
+        if any(not isinstance(game_id, str) or not game_id.strip() for game_id in source_game_ids):
+            fail(f"cells[{idx}].source_game_ids must contain non-empty strings")
         concept_count = cell.get("concept_count")
         if not isinstance(concept_count, int) or concept_count < 1:
             fail(f"cells[{idx}].concept_count must be integer >= 1")
