@@ -1,13 +1,14 @@
 import unittest
 from pathlib import Path
 import sys
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[4]
 SYS_PATH = ROOT / ".specify" / "scripts" / "python"
 if str(SYS_PATH) not in sys.path:
     sys.path.append(str(SYS_PATH))
 
-from agent_runtime import generate_director_brief, generate_director_plan, generate_prototype_html, generate_text_artifact, render_director_plan  # noqa: E402
+from agent_runtime import generate_director_brief, generate_director_plan, generate_director_plan_with_model, generate_prototype_html, generate_text_artifact, render_director_plan, validate_director_plan  # noqa: E402
 
 
 class TestAgentRuntimeOutputs(unittest.TestCase):
@@ -94,6 +95,171 @@ class TestAgentRuntimeOutputs(unittest.TestCase):
         self.assertIn("Collector Loop", markdown)
         self.assertIn("Plate Claim Loop", markdown)
         self.assertIn("Queue Prep Loop", markdown)
+
+    def test_validate_director_plan_accepts_materially_different_variations(self):
+        context = {
+            "wave_id": "wave_001",
+            "cell_id": "cell_a",
+            "concept_count": 3,
+            "source_games": [
+                {"id": "ios-6751056652-pixel-flow", "name": "Pixel Flow!", "mechanics": ["queue_sort"], "human_notes": {}},
+                {"id": "ios-6471490579-screw-jam", "name": "Screw Jam", "mechanics": ["sequence_constraint"], "human_notes": {}},
+            ],
+        }
+        plan = {
+            "new_unified_verb": "dispatch boxes to collect exposed screws",
+            "source_a_functions": "conveyor loop and queue pressure",
+            "source_b_functions": "layered reveal and collapse",
+            "replaceable_surface": "shooters and direct screw tapping",
+            "literal_fusion_why_weaker": "two interaction models would compete",
+            "selected_build_variation_id": "variation_01",
+            "variation_targets": [
+                {
+                    "id": "variation_01",
+                    "label": "Collector Loop",
+                    "role": "conservative",
+                    "core_verb": "dispatch boxes to collect screws",
+                    "main_interaction": "Send a box around the loop to collect exposed screws.",
+                    "objective": "Clear the board before pressure collapses the run.",
+                    "core_loop": "read -> dispatch -> collect -> reassess",
+                    "failure_pressure": "wrong box wastes a lap",
+                    "board_setup": "Layered plate board inside a conveyor.",
+                    "object_rules": "Boxes collect only exposed matching screws.",
+                    "input_behavior": "Tap a front box to dispatch.",
+                    "difference_note": "Free collection across all exposed plates.",
+                },
+                {
+                    "id": "variation_02",
+                    "label": "Plate Claim",
+                    "role": "conservative",
+                    "core_verb": "assign a box to one plate",
+                    "main_interaction": "Commit one box to one plate for a full lap.",
+                    "objective": "Collapse plates in the correct order.",
+                    "core_loop": "read -> assign -> resolve -> reassess",
+                    "failure_pressure": "wrong plate commitment costs a full lap",
+                    "board_setup": "Layered plate board with one-plate assignment per lap.",
+                    "object_rules": "Assigned boxes collect only from their target plate.",
+                    "input_behavior": "Tap a box, then tap a plate.",
+                    "difference_note": "Commitment changes the board-update logic.",
+                },
+                {
+                    "id": "variation_03",
+                    "label": "Queue Prep",
+                    "role": "novelty",
+                    "core_verb": "sacrifice current value to set future queue order",
+                    "main_interaction": "Dispatch low-value boxes to surface the next ideal box.",
+                    "objective": "Win by managing future queue state.",
+                    "core_loop": "read queue -> dispatch prep box -> next front changes -> exploit",
+                    "failure_pressure": "greedy present play buries the needed future box",
+                    "board_setup": "Same board, but queue order is the main problem.",
+                    "object_rules": "Every dispatch changes both board and future queue.",
+                    "input_behavior": "Tap the front box for either value or setup.",
+                    "difference_note": "Future queue preparation is the primary challenge.",
+                },
+            ],
+        }
+
+        validated = validate_director_plan(plan, context)
+        self.assertEqual(validated["plan_source"], "model")
+        self.assertEqual(validated["selected_build_variation_id"], "variation_01")
+
+    @patch("agent_runtime.call_provider")
+    def test_model_director_plan_falls_back_when_invalid(self, mock_call_provider):
+        context = {
+            "wave_id": "wave_001",
+            "cell_id": "cell_a",
+            "concept_count": 3,
+            "source_games": [
+                {"id": "ios-6751056652-pixel-flow", "name": "Pixel Flow!", "mechanics": ["queue_sort"], "human_notes": {}},
+                {"id": "ios-6471490579-screw-jam", "name": "Screw Jam", "mechanics": ["sequence_constraint"], "human_notes": {}},
+            ],
+        }
+        mock_call_provider.return_value = '{"bad":"shape"}'
+        plan, fallback_used = generate_director_plan_with_model(
+            repo_root=ROOT,
+            context=context,
+            profile={"provider": "openai", "model": "test-model", "name": "cloud"},
+            config={"execution": {"allow_mock_fallback": True}},
+        )
+
+        self.assertTrue(fallback_used)
+        self.assertEqual(plan["plan_source"], "scripted_fallback")
+
+    @patch("agent_runtime.call_provider")
+    def test_model_director_plan_uses_valid_json(self, mock_call_provider):
+        context = {
+            "wave_id": "wave_001",
+            "cell_id": "cell_a",
+            "concept_count": 3,
+            "source_games": [
+                {"id": "ios-6751056652-pixel-flow", "name": "Pixel Flow!", "mechanics": ["queue_sort"], "human_notes": {}},
+                {"id": "ios-6471490579-screw-jam", "name": "Screw Jam", "mechanics": ["sequence_constraint"], "human_notes": {}},
+            ],
+        }
+        mock_call_provider.return_value = """
+        {
+          "new_unified_verb": "dispatch boxes to collect exposed screws",
+          "source_a_functions": "conveyor loop, queue pressure",
+          "source_b_functions": "layer reveal, plate collapse",
+          "replaceable_surface": "shooters, direct tapping",
+          "literal_fusion_why_weaker": "two interaction models would compete",
+          "selected_build_variation_id": "variation_02",
+          "variation_targets": [
+            {
+              "id": "variation_01",
+              "label": "Collector Loop",
+              "role": "conservative",
+              "core_verb": "dispatch boxes to collect screws",
+              "main_interaction": "Send a box around the loop to collect exposed screws.",
+              "objective": "Clear the board before pressure collapses the run.",
+              "core_loop": "read -> dispatch -> collect -> reassess",
+              "failure_pressure": "wrong box wastes a lap",
+              "board_setup": "Layered plate board inside a conveyor.",
+              "object_rules": "Boxes collect only exposed matching screws.",
+              "input_behavior": "Tap a front box to dispatch.",
+              "difference_note": "Free collection across all exposed plates."
+            },
+            {
+              "id": "variation_02",
+              "label": "Plate Claim",
+              "role": "conservative",
+              "core_verb": "assign a box to one plate",
+              "main_interaction": "Commit one box to one plate for a full lap.",
+              "objective": "Collapse plates in the correct order.",
+              "core_loop": "read -> assign -> resolve -> reassess",
+              "failure_pressure": "wrong plate commitment costs a full lap",
+              "board_setup": "Layered plate board with one-plate assignment per lap.",
+              "object_rules": "Assigned boxes collect only from their target plate.",
+              "input_behavior": "Tap a box, then tap a plate.",
+              "difference_note": "Commitment changes the board-update logic."
+            },
+            {
+              "id": "variation_03",
+              "label": "Queue Prep",
+              "role": "novelty",
+              "core_verb": "sacrifice current value to set future queue order",
+              "main_interaction": "Dispatch low-value boxes to surface the next ideal box.",
+              "objective": "Win by managing future queue state.",
+              "core_loop": "read queue -> dispatch prep box -> next front changes -> exploit",
+              "failure_pressure": "greedy present play buries the needed future box",
+              "board_setup": "Same board, but queue order is the main problem.",
+              "object_rules": "Every dispatch changes both board and future queue.",
+              "input_behavior": "Tap the front box for either value or setup.",
+              "difference_note": "Future queue preparation is the primary challenge."
+            }
+          ]
+        }
+        """
+        plan, fallback_used = generate_director_plan_with_model(
+            repo_root=ROOT,
+            context=context,
+            profile={"provider": "openai", "model": "test-model", "name": "cloud"},
+            config={"execution": {"allow_mock_fallback": True}},
+        )
+
+        self.assertFalse(fallback_used)
+        self.assertEqual(plan["plan_source"], "model")
+        self.assertEqual(plan["selected_build_variation_id"], "variation_02")
 
     def test_generated_prototype_is_not_step_placeholder(self):
         html = generate_prototype_html(

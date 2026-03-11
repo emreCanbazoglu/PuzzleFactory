@@ -7,7 +7,7 @@ from pathlib import Path
 from agent_runtime import (
     deterministic_scores,
     generate_director_brief,
-    generate_director_plan,
+    generate_director_plan_with_model,
     generate_human_review_stub,
     generate_prototype_html,
     generate_text_artifact,
@@ -81,9 +81,23 @@ def run_cell(repo_root: Path, cfg: dict, wave_id: str, cell: dict) -> list[str]:
 
     outputs: list[str] = []
 
-    director_plan = generate_director_plan(context)
+    director_profile = resolve_profile_for_role(cfg, "fusion_director")
+    director_plan, director_plan_fallback = generate_director_plan_with_model(
+        repo_root=repo_root,
+        context=context,
+        profile=director_profile,
+        config=cfg,
+    )
     context["director_plan"] = director_plan
     context["director_plan_markdown"] = render_director_plan(director_plan)
+    context["selected_variation_id"] = director_plan.get("selected_build_variation_id")
+    selected_variation = None
+    for variation in director_plan.get("variation_targets", []):
+        if variation.get("id") == context["selected_variation_id"]:
+            selected_variation = variation
+            break
+    if selected_variation is not None:
+        context["selected_variation"] = selected_variation
     director_plan_path = cell_output_path(repo_root, "concepts", wave_id, cid, "director_plan.md")
     _write_text(director_plan_path, context["director_plan_markdown"])
     outputs.append(str(director_plan_path))
@@ -93,10 +107,10 @@ def run_cell(repo_root: Path, cfg: dict, wave_id: str, cell: dict) -> list[str]:
         wave_id=wave_id,
         cell_id=cid,
         role="fusion_director",
-        template_name="director_plan_builtin",
-        profile=resolve_profile_for_role(cfg, "fusion_director"),
+        template_name="director_plan_model" if not director_plan_fallback else "director_plan_scripted_fallback",
+        profile=director_profile,
         artifact_path=director_plan_path,
-        fallback_used=True,
+        fallback_used=director_plan_fallback,
     )
     outputs.append(str(director_plan_meta))
     director_plan_json_path = cell_output_path(repo_root, "concepts", wave_id, cid, "director_plan.json")

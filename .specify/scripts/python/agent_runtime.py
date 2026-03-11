@@ -2,6 +2,7 @@
 import hashlib
 import json
 import os
+import re
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
@@ -548,29 +549,6 @@ def fill_template(template_text: str, context: dict[str, Any]) -> str:
     return "\n".join(out).rstrip() + "\n"
 
 
-def generate_director_plan(context: dict[str, Any]) -> dict[str, Any]:
-    fusion = _fusion_summary(context)
-    variations = _variation_specs(context)
-    return {
-        "wave_id": context.get("wave_id", ""),
-        "cell_id": context.get("cell_id", ""),
-        "sources": [
-            {"id": game["id"], "name": game["name"]}
-            for game in _source_games(context)
-        ],
-        "new_unified_verb": fusion["new_unified_verb"],
-        "source_a_functions": fusion["source_a_functions"],
-        "source_b_functions": fusion["source_b_functions"],
-        "replaceable_surface": fusion["replaceable_surface"],
-        "literal_fusion_why_weaker": fusion["literal_fusion_why_weaker"],
-        "variation_targets": variations if variations else [
-            {"id": "variation_01", "label": "Primary variation", "role": "conservative", "summary": fusion["variation_1"]},
-            {"id": "variation_02", "label": "Secondary variation", "role": "conservative", "summary": fusion["variation_2"]},
-            {"id": "variation_03", "label": "Tertiary variation", "role": "novelty", "summary": fusion["variation_3"]},
-        ],
-    }
-
-
 def render_director_plan(plan: dict[str, Any]) -> str:
     lines = [
         "# Director Plan",
@@ -578,6 +556,8 @@ def render_director_plan(plan: dict[str, Any]) -> str:
         f"Wave: {plan['wave_id']}",
         f"Cell: {plan['cell_id']}",
         f"Sources: {', '.join(source['name'] for source in plan['sources'])}",
+        f"Plan Source: {plan.get('plan_source', 'scripted')}",
+        f"Selected Build Variation: {plan.get('selected_build_variation_id', '')}",
         "",
         "Pre-Ideation Guardrails:",
         f"- New Unified Player Verb: {plan['new_unified_verb']}",
@@ -598,6 +578,187 @@ def render_director_plan(plan: dict[str, Any]) -> str:
                 lines.append(f"   - {label}: {variation[key]}")
     lines.append("")
     return "\n".join(lines)
+
+
+def _scripted_director_plan(context: dict[str, Any]) -> dict[str, Any]:
+    fusion = _fusion_summary(context)
+    variations = _variation_specs(context)
+    return {
+        "wave_id": context.get("wave_id", ""),
+        "cell_id": context.get("cell_id", ""),
+        "sources": [
+            {"id": game["id"], "name": game["name"]}
+            for game in _source_games(context)
+        ],
+        "new_unified_verb": fusion["new_unified_verb"],
+        "source_a_functions": fusion["source_a_functions"],
+        "source_b_functions": fusion["source_b_functions"],
+        "replaceable_surface": fusion["replaceable_surface"],
+        "literal_fusion_why_weaker": fusion["literal_fusion_why_weaker"],
+        "selected_build_variation_id": variations[0]["id"] if variations else "variation_01",
+        "plan_source": "scripted_fallback",
+        "variation_targets": variations if variations else [
+            {"id": "variation_01", "label": "Primary variation", "role": "conservative", "summary": fusion["variation_1"]},
+            {"id": "variation_02", "label": "Secondary variation", "role": "conservative", "summary": fusion["variation_2"]},
+            {"id": "variation_03", "label": "Tertiary variation", "role": "novelty", "summary": fusion["variation_3"]},
+        ],
+    }
+
+
+def generate_director_plan(context: dict[str, Any]) -> dict[str, Any]:
+    return _scripted_director_plan(context)
+
+
+def _extract_json_object(text: str) -> dict[str, Any]:
+    stripped = text.strip()
+    if stripped.startswith("```"):
+        match = re.search(r"```(?:json)?\s*(\{.*\})\s*```", stripped, re.S)
+        if match:
+            stripped = match.group(1)
+    start = stripped.find("{")
+    end = stripped.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        raise ValueError("no JSON object found")
+    return json.loads(stripped[start:end + 1])
+
+
+def _director_plan_prompt(role_text: str, context: dict[str, Any]) -> str:
+    source_games = [_normalize_game(game) for game in _source_games(context)]
+    concept_count = int(context.get("concept_count", 3))
+    schema = {
+        "new_unified_verb": "string",
+        "source_a_functions": "string",
+        "source_b_functions": "string",
+        "replaceable_surface": "string",
+        "literal_fusion_why_weaker": "string",
+        "selected_build_variation_id": "string",
+        "variation_targets": [
+            {
+                "id": "variation_01 style string",
+                "label": "short variation label",
+                "role": "conservative or novelty",
+                "core_verb": "string",
+                "main_interaction": "string",
+                "objective": "string",
+                "core_loop": "string",
+                "failure_pressure": "string",
+                "board_setup": "string",
+                "object_rules": "string",
+                "input_behavior": "string",
+                "difference_note": "why this materially differs from the other variations",
+            }
+        ],
+    }
+    return (
+        "You are generating the pre-ideation director plan for PuzzleFusionFactory.\n"
+        "Output only one JSON object. No markdown. No explanation outside JSON.\n\n"
+        f"Role instructions:\n{role_text}\n\n"
+        f"Cell context JSON: {json.dumps(context, ensure_ascii=True)}\n\n"
+        f"Normalized source games JSON: {json.dumps(source_games, ensure_ascii=True)}\n\n"
+        f"Requirements:\n"
+        f"- Produce exactly {concept_count} materially different variation targets.\n"
+        "- Variations must differ by unified verb, pressure structure, or board-update logic.\n"
+        "- Do not preserve source verbs literally unless necessary.\n"
+        "- Preserve system functions and winning points.\n"
+        "- Prefer one coherent interaction model per variation.\n"
+        "- Use exact source game names and ids implicitly from context.\n"
+        "- Keep each variation specific enough for concept/spec generation.\n\n"
+        f"JSON schema shape:\n{json.dumps(schema, indent=2)}\n"
+    )
+
+
+def validate_director_plan(plan: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(plan, dict):
+        raise ValueError("director plan must be an object")
+
+    required_strings = (
+        "new_unified_verb",
+        "source_a_functions",
+        "source_b_functions",
+        "replaceable_surface",
+        "literal_fusion_why_weaker",
+        "selected_build_variation_id",
+    )
+    for key in required_strings:
+        value = plan.get(key)
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"{key} must be a non-empty string")
+
+    variations = plan.get("variation_targets")
+    concept_count = int(context.get("concept_count", 3))
+    if not isinstance(variations, list) or len(variations) < concept_count:
+        raise ValueError("variation_targets must contain at least concept_count entries")
+
+    normalized_variations: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+    signatures: set[tuple[str, str, str]] = set()
+    for index, variation in enumerate(variations[:concept_count], start=1):
+        if not isinstance(variation, dict):
+            raise ValueError(f"variation_targets[{index - 1}] must be an object")
+        normalized: dict[str, Any] = {}
+        for key in ("id", "label", "role", "core_verb", "main_interaction", "objective", "core_loop", "failure_pressure", "board_setup", "object_rules", "input_behavior"):
+            value = variation.get(key)
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"variation_targets[{index - 1}].{key} must be a non-empty string")
+            normalized[key] = " ".join(value.split())
+        difference_note = variation.get("difference_note")
+        if not isinstance(difference_note, str) or not difference_note.strip():
+            raise ValueError(f"variation_targets[{index - 1}].difference_note must be a non-empty string")
+        normalized["difference_note"] = " ".join(difference_note.split())
+        if normalized["role"] not in {"conservative", "novelty"}:
+            raise ValueError(f"variation_targets[{index - 1}].role must be conservative or novelty")
+        if normalized["id"] in seen_ids:
+            raise ValueError("variation ids must be unique")
+        seen_ids.add(normalized["id"])
+        signature = (normalized["core_verb"], normalized["failure_pressure"], normalized["board_setup"])
+        if signature in signatures:
+            raise ValueError("variation_targets must be materially different")
+        signatures.add(signature)
+        normalized_variations.append(normalized)
+
+    if plan["selected_build_variation_id"] not in {variation["id"] for variation in normalized_variations}:
+        raise ValueError("selected_build_variation_id must reference one of the variation targets")
+
+    return {
+        "wave_id": context.get("wave_id", ""),
+        "cell_id": context.get("cell_id", ""),
+        "sources": [{"id": game["id"], "name": game["name"]} for game in _source_games(context)],
+        "new_unified_verb": " ".join(plan["new_unified_verb"].split()),
+        "source_a_functions": " ".join(plan["source_a_functions"].split()),
+        "source_b_functions": " ".join(plan["source_b_functions"].split()),
+        "replaceable_surface": " ".join(plan["replaceable_surface"].split()),
+        "literal_fusion_why_weaker": " ".join(plan["literal_fusion_why_weaker"].split()),
+        "selected_build_variation_id": plan["selected_build_variation_id"],
+        "plan_source": "model",
+        "variation_targets": normalized_variations,
+    }
+
+
+def generate_director_plan_with_model(
+    *,
+    repo_root: Path,
+    context: dict[str, Any],
+    profile: dict[str, str],
+    config: dict[str, Any],
+) -> tuple[dict[str, Any], bool]:
+    scripted = _scripted_director_plan(context)
+    if profile.get("provider") == "mock":
+        return scripted, True
+
+    role_path = repo_root / "agents" / "fusion_director.md"
+    if not role_path.exists():
+        return scripted, True
+
+    prompt = _director_plan_prompt(read_text(role_path), context)
+    try:
+        raw = call_provider(profile, prompt)
+        parsed = _extract_json_object(raw)
+        validated = validate_director_plan(parsed, context)
+        return validated, False
+    except (RuntimeError, urllib.error.URLError, TimeoutError, KeyError, IndexError, ValueError, json.JSONDecodeError):
+        if not allow_mock_fallback(config):
+            raise
+        return scripted, True
 
 
 def _stage_prompt(role_text: str, template_text: str, context: dict[str, Any], artifact_type: str) -> str:
