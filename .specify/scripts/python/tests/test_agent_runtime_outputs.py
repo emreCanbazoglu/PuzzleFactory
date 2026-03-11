@@ -7,7 +7,7 @@ SYS_PATH = ROOT / ".specify" / "scripts" / "python"
 if str(SYS_PATH) not in sys.path:
     sys.path.append(str(SYS_PATH))
 
-from agent_runtime import generate_prototype_html, generate_text_artifact  # noqa: E402
+from agent_runtime import generate_director_brief, generate_prototype_html, generate_text_artifact  # noqa: E402
 
 
 class TestAgentRuntimeOutputs(unittest.TestCase):
@@ -56,7 +56,25 @@ class TestAgentRuntimeOutputs(unittest.TestCase):
         )
         self.assertIn("Pixel Flow!", content)
         self.assertIn("Screw Jam", content)
-        self.assertIn("Click exposed screws", content)
+        self.assertIn("dispatch colored boxes", content.lower())
+        self.assertNotIn("Click exposed screws", content)
+
+    def test_director_brief_includes_function_first_handoff(self):
+        context = {
+            "wave_id": "wave_001",
+            "cell_id": "cell_a",
+            "source_games": [
+                {"id": "ios-6751056652-pixel-flow", "name": "Pixel Flow!", "mechanics": ["queue_sort"], "human_notes": {}},
+                {"id": "ios-6471490579-screw-jam", "name": "Screw Jam", "mechanics": ["sequence_constraint"], "human_notes": {}},
+            ],
+        }
+
+        brief = generate_director_brief(context)
+
+        self.assertIn("Source A Functions To Preserve", brief)
+        self.assertIn("Replaceable Surface Elements", brief)
+        self.assertIn("New Unified Player Verb", brief)
+        self.assertIn("Why Literal Fusion Is Weaker", brief)
 
     def test_generated_prototype_is_not_step_placeholder(self):
         html = generate_prototype_html(
@@ -73,6 +91,27 @@ class TestAgentRuntimeOutputs(unittest.TestCase):
         self.assertIn("Next Level", html)
         self.assertNotIn("Deterministic prototype placeholder", html)
         self.assertNotIn("id=\"step\"", html)
+
+    def test_prototype_spec_uses_translated_input_model(self):
+        context = {
+            "wave_id": "wave_001",
+            "cell_id": "cell_a",
+            "source_games": [
+                {"id": "ios-6751056652-pixel-flow", "name": "Pixel Flow!", "mechanics": ["queue_sort"], "human_notes": {}},
+                {"id": "ios-6471490579-screw-jam", "name": "Screw Jam", "mechanics": ["sequence_constraint"], "human_notes": {}},
+            ],
+        }
+        content, _, _ = generate_text_artifact(
+            repo_root=ROOT,
+            role="prototype_spec_writer",
+            artifact_type="prototype_spec",
+            context=context,
+            profile={"provider": "mock", "model": "mock", "name": "cloud"},
+            config={"execution": {"allow_mock_fallback": True}},
+        )
+
+        self.assertIn("Tap only the front box in a dock lane", content)
+        self.assertNotIn("Click an exposed screw", content)
 
 
 if __name__ == "__main__":

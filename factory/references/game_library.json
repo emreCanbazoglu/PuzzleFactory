@@ -8,8 +8,8 @@
       "path_creation",
       "limited_moves"
     ],
-    "description": null,
-    "detail_text": null,
+    "description": "Puzzle game where the player taps colored shooters from the tops of dock queues and sends them around a surrounding conveyor to fire matching bullets into a blocked pixel board.",
+    "detail_text": "The board is surrounded by a conveyor and fed by multi-lane dock queues. The player can only tap the front shooter at the top of each dock lane. Once dispatched, a shooter travels one full loop around the board and fires inward when it crosses attack lanes. Along the bottom edge it fires one bullet per column; along the side and top lanes it fires one bullet per row. A bullet only removes a matching colored cube if that cube is currently exposed from the outside in, so inner cubes stay protected until outer cubes are cleared. Shooters come in different colors and bullet counts, which means the player is solving both color matching and quantity efficiency at the same time. When a shooter finishes its loop with bullets remaining, it falls back into one of five overflow slots if a slot is free. If all slots are full and another shooter needs to fall back, the run fails. The level is won when all cubes on the board are cleared.",
     "board_type": "grid",
     "session_length": "3-5 minutes",
     "store_links": {
@@ -28,8 +28,9 @@
     },
     "human_notes": {
       "winning_points": [
-        "Satisfaction comes from opening a clean route and watching the flow resolve correctly.",
-        "Surrounding conveyor and dock pressure creates urgency around route timing."
+        "The board starts as a readable visual mass and feels satisfying as outer cubes peel away and the whole image gets cleaned up.",
+        "Choosing the exact shooter color and bullet count for the current exposed board state creates smart efficiency decisions instead of blind matching.",
+        "Queue and slot pressure make every dispatch matter because a bad order can clog the system before the board is solved."
       ],
       "adopt": [
         "Surrounding conveyor frame",
@@ -37,19 +38,19 @@
         "Visual payoff when the route is finally correct"
       ],
       "avoid": [
-        "Overly empty boards with no route tension",
         "Pure cosmetic pixel theme dependence"
       ],
-      "main_goal": "Route colored units into the correct destinations before surrounding pressure causes failure.",
+      "main_goal": "Clear the full pixel board by dispatching the right colored shooters in the right order before slot overflow causes failure.",
       "stress_points": [
-        "Lane congestion",
-        "Slot overflow",
-        "Choosing the wrong opening first"
+        "Slot overflow when looping shooters return with leftover bullets",
+        "Top-of-queue restriction because the player can only tap the front shooter in each dock lane",
+        "Sending the wrong color or bullet count for the currently exposed outer layer",
+        "Clearing weak front shooters first to bring the needed color to the top without ruining the future board state"
       ],
       "fun_points": [
-        "Flow resolution",
-        "Board cleanup",
-        "Seeing multiple constraints click together"
+        "Watching a correctly chosen shooter strip the exposed outer layer cleanly",
+        "Board cleanup from outside to inside as blocked targets become reachable",
+        "Manipulating queue order to surface the exact shooter needed for the next board state"
       ]
     },
     "last_verified_at": "2026-03-09"
@@ -63,8 +64,8 @@
       "restricted_space",
       "limited_moves"
     ],
-    "description": null,
-    "detail_text": null,
+    "description": "Puzzle game where the player taps exposed screws from stacked plates and must remove them in an order that feeds the current target boxes efficiently while opening more of the layered board.",
+    "detail_text": "The board is made of overlapping shaped plates fastened by colored screws. The player only interacts with screws that are currently exposed and reachable on the top layer. At the top of the screen there is a current set of colored target boxes, each with capacity for 3 screws. When the player removes a screw, it automatically goes into a matching target box if that color is currently present. If no matching target box exists, the screw goes into one of 5 temporary overflow slots if a slot is open. A plate falls away when all screws holding it are removed, which reveals new screws and changes the future access order. The player is not choosing boxes directly; the puzzle is entirely about choosing which exposed screw to remove next so that target boxes fill cleanly, overflow slots stay available, and future access chains remain healthy. The only fail condition is when all 5 overflow slots are full and the player removes a screw that does not match any current target box. The level is won when all screws are cleared from the layered board.",
     "board_type": "grid",
     "session_length": "3-5 minutes",
     "store_links": {
@@ -84,27 +85,31 @@
     },
     "human_notes": {
       "winning_points": [
-        "The pleasure is in discovering the legal order hidden inside a crowded board.",
-        "Every removal changes future access, so choices feel consequential."
+        "The strongest satisfaction comes from finding the hidden legal removal order inside a crowded layered board.",
+        "A good removal often does three things at once: fills a current target box, preserves overflow capacity, and opens a better future access chain.",
+        "When a cleared plate falls away and reveals a fresh layer of screws, the board gives a strong tactile and strategic payoff."
       ],
       "adopt": [
         "Layered plate board layout",
         "Colored screw readability",
-        "Exposure-order decision making"
+        "Exposure-order decision making",
+        "Physics of plate falling when screws are removed"
       ],
       "avoid": [
         "Random blocker removal with no access logic",
         "Boards where every visible screw is equally good"
       ],
-      "main_goal": "Clear the layered board by following the right exposure order.",
-      "stress_points": [
-        "Deadlocks from wrong removals",
-        "Tight access windows"
-      ],
-      "fun_points": [
-        "Revealing hidden options",
-        "Unlocking the next meaningful layer"
-      ]
+    "main_goal": "Clear the layered screw board by choosing an exposure order that fills current target boxes cleanly and avoids overflow-slot failure.",
+    "stress_points": [
+      "All 5 overflow slots are precious because unmatched screws are only safe while space remains",
+      "Removing the wrong exposed screw can preserve the current board but damage the future access chain",
+      "Current target-box colors create short-term pressure that can conflict with the best long-term plate-collapse order"
+    ],
+    "fun_points": [
+      "Revealing hidden screws by collapsing a finished plate",
+      "Completing a target box cleanly instead of leaking screws into overflow",
+      "Finding removals that simultaneously solve the current box state and improve the next layer"
+    ]
     },
     "last_verified_at": "2026-03-09"
   },

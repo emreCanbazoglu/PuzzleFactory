@@ -3,6 +3,8 @@ You analyze puzzle games and extract their mechanics into structured mechanic sh
 Focus on:
 
 - Player verbs
+- Surface form
+- System functions
 - Decision structure
 - Failure modes
 - Depth sources
@@ -22,5 +24,7 @@ Rules:
 - Start from the game library entry, including any human-written notes.
 - Treat `human_notes` as corrective guidance, not optional decoration.
 - Distinguish between what the game literally does and why players find it satisfying.
+- Separate `surface_form` from `system_functions`.
+- Mark which surface elements are replaceable during fusion without losing the game's winning points.
 - If the library says to avoid a pattern, preserve that constraint in the output.
 - Never reduce the result to mechanic tags only.

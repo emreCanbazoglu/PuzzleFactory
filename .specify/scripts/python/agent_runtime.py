@@ -34,13 +34,20 @@ PAIR_PRESETS = {
     },
     ("ios-6471490579-screw-jam", "ios-6751056652-pixel-flow"): {
         "concept_name": "Pixel Jam Flow",
-        "core_verb": "remove exposed screws to open matching flow lanes",
-        "primary_decision": "which exposed screw unlocks the most useful lane progress without wasting a move",
-        "main_interaction": "Click exposed screws to open lane segments so queued pixels can reach matching exits.",
-        "objective": "Clear the minimum blocker set needed to connect all three pixel lanes before moves run out.",
-        "core_loop": "inspect exposed screws -> remove one -> lanes recalculate -> newly opened packets flow",
-        "failure_pressure": "wasting removals on visible but non-critical screws",
-        "why_it_works": "It combines lane-routing pressure with exposure-order pressure, so every removal changes both access and flow.",
+        "core_verb": "dispatch colored boxes onto a conveyor to collect exposed matching screws",
+        "primary_decision": "which top-of-queue box color and capacity best clears the current exposed screw layer without clogging future turns",
+        "main_interaction": "Send colored screwboxes from dock queues onto a surrounding conveyor so they orbit the layered board and collect matching exposed screws automatically.",
+        "objective": "Clear the layered screw board by dispatching the right boxes in the right order before queue and overflow pressure collapses the run.",
+        "core_loop": "read exposed screws and top queue colors -> dispatch one box -> orbit and collect matching screws -> plates collapse and reveal new screws -> reassess",
+        "failure_pressure": "sending the wrong box wastes a full orbit, preserves bad exposure order, and builds queue or overflow pressure",
+        "why_it_works": "It preserves Screw Jam's reveal-order payoff and Pixel Flow's conveyor dispatch pressure inside one unified box-dispatch interaction.",
+        "input_behavior": "Tap only the front box in a dock lane to send it around the conveyor; the box auto-collects exposed matching screws during its lap.",
+        "board_setup": "A layered Screw Jam-style plate board sits inside a Pixel Flow-style surrounding conveyor. Top-only dock queues feed colored boxes onto the loop while exposed screws wait on the current outer layer of each plate.",
+        "object_rules": "Boxes have a color and capacity. During one full lap they collect only exposed matching screws. Clearing all screws from a plate collapses it and reveals the next layer. Returned boxes or unmatched pickups create pressure in the dock or overflow system.",
+        "win_condition": "Every screw is collected and every plate collapses off the board.",
+        "lose_condition": "Queue or overflow pressure locks the system before the board is cleared.",
+        "level1_goal": "Teach that only exposed screws are collectible and that dispatch order matters more than raw speed.",
+        "level2_goal": "Introduce a tempting wrong-color queue front so the player must clear for future access before sending the ideal collector.",
     },
     ("ios-1482155847-royal-match", "ios-1514542157-water-sort-puzzle"): {
         "concept_name": "Cascade Decant",
@@ -59,6 +66,23 @@ PROFILE_OVERRIDES = {
         "failure_mode": "packets jam before reaching correct exits",
         "depth_source": "route sequencing under limited space",
         "notes": "lane routing and path reveal pressure",
+        "surface_form": [
+            "tap front shooters from dock queues",
+            "shoot colored bullets from a conveyor loop",
+            "pixel board theme and cube targets",
+        ],
+        "system_functions": [
+            "surrounding conveyor delivery loop",
+            "top-of-queue dispatch restriction",
+            "outside-in board clearing",
+            "color and quantity matching against exposed targets",
+            "slot or overflow pressure from returning units",
+        ],
+        "replaceable_elements": [
+            "literal shooter object",
+            "bullet shooting presentation",
+            "pixel art theme",
+        ],
     },
     "ios-6471490579-screw-jam": {
         "core_verb": "remove blockers in a legal exposure order",
@@ -67,6 +91,23 @@ PROFILE_OVERRIDES = {
         "failure_mode": "deadlock from removing the wrong exposed blocker",
         "depth_source": "planning future accessibility before committing",
         "notes": "exposed-order removal and deadlock risk",
+        "surface_form": [
+            "tap exposed screws directly",
+            "screw theme and shaped plates",
+            "target boxes that auto-sort collected screws",
+        ],
+        "system_functions": [
+            "exposed-only interaction order",
+            "layer reveal through plate collapse",
+            "target-box capacity pressure",
+            "overflow risk for unmatched colors",
+            "clear-the-board progression through legal removal order",
+        ],
+        "replaceable_elements": [
+            "direct screw tapping",
+            "literal screw theme",
+            "target boxes as passive UI instead of active movers",
+        ],
     },
     "ios-1514542157-water-sort-puzzle": {
         "core_verb": "pour color stacks between containers",
@@ -126,6 +167,9 @@ def _normalize_game(game: dict[str, Any]) -> dict[str, Any]:
         "avoid": list(human_notes.get("avoid", [])),
         "stress_points": list(human_notes.get("stress_points", [])),
         "fun_points": list(human_notes.get("fun_points", [])),
+        "surface_form": list(game.get("surface_form") or override.get("surface_form", [])),
+        "system_functions": list(game.get("system_functions") or override.get("system_functions", [])),
+        "replaceable_elements": list(game.get("replaceable_elements") or override.get("replaceable_elements", [])),
     }
 
 
@@ -136,6 +180,15 @@ def _source_names(context: dict[str, Any]) -> str:
 def _pair_preset(context: dict[str, Any]) -> dict[str, str]:
     ids = tuple(sorted(game["id"] for game in _source_games(context)))
     return PAIR_PRESETS.get(ids, {})
+
+
+def _joined(items: list[str], fallback: str) -> str:
+    clean = [item for item in items if item]
+    return ", ".join(clean) if clean else fallback
+
+
+def _pick(items: list[str], fallback: str) -> str:
+    return items[0] if items else fallback
 
 
 def _fusion_summary(context: dict[str, Any]) -> dict[str, str]:
@@ -182,27 +235,76 @@ def _fusion_summary(context: dict[str, Any]) -> dict[str, str]:
             "weaknesses": "Limited depth in the current prototype slice.",
             "key_risks": "Overly linear boards.",
             "recommendation": "Iterate",
+            "surface_form": "visible puzzle pieces",
+            "system_functions": "clear board state change, deterministic pressure, readable cause and effect",
+            "replaceable_surface": "visual theme and literal object identity",
+            "source_a_functions": "readable board change",
+            "source_b_functions": "failure pressure",
+            "new_unified_verb": "make one meaningful move that advances the board",
+            "literal_fusion_why_weaker": "literal side-by-side copying would create two competing interaction models",
+            "input_behavior": "Click the primary puzzle piece to make one meaningful deterministic move.",
         }
 
     first, second = sources[0], sources[1]
     source_names = _source_names(context)
     concept_name = preset.get("concept_name", f"{first['name']} x {second['name']}")
+    source_a_functions = _joined(first["system_functions"], first["notes"])
+    source_b_functions = _joined(second["system_functions"], second["notes"])
+    replaceable_surface = _joined(first["replaceable_elements"] + second["replaceable_elements"], "source presentation details")
+    new_unified_verb = preset.get(
+        "core_verb",
+        f"apply {first['name']}'s board pressure through {second['name']}'s access logic",
+    )
     main_interaction = preset.get(
         "main_interaction",
-        f"Fuse {first['core_verb']} with {second['core_verb']} in one deterministic board state.",
+        f"Use one interaction model that preserves {first['name']}'s { _pick(first['system_functions'], first['core_verb']) } and {second['name']}'s { _pick(second['system_functions'], second['core_verb']) }.",
     )
     objective = preset.get(
         "objective",
-        f"Use {first['mechanics'][0]} pressure and {second['mechanics'][0]} pressure to solve a single board cleanly.",
+        f"Preserve {first['name']}'s {_pick(first['winning_points'], first['main_goal'] or first['notes'])} while also preserving {second['name']}'s {_pick(second['winning_points'], second['main_goal'] or second['notes'])}.",
     )
     core_loop = preset.get(
         "core_loop",
-        f"read board -> apply {first['core_verb']} -> resolve {second['failure_mode']} risk -> check objective",
+        f"read exposed state -> commit the unified action -> resolve board update and pressure -> reassess the next layer",
     )
     failure_pressure = preset.get(
         "failure_pressure",
         f"{first['pressure']} plus {second['pressure']}",
     )
+    input_behavior = preset.get(
+        "input_behavior",
+        "Use a single unified input that preserves both source games' strategic functions instead of copying both source verbs.",
+    )
+    why_it_works = preset.get(
+        "why_it_works",
+        f"It preserves {first['name']}'s {_pick(first['fun_points'], first['notes'])} and {second['name']}'s {_pick(second['fun_points'], second['notes'])} inside one interaction loop.",
+    )
+    why_it_fails = (
+        "If the fusion keeps both source verbs literally, the player will learn two competing games instead of one coherent system."
+        + (
+            f" It must also avoid {first['avoid'][0].lower()} and {second['avoid'][0].lower()}."
+            if first["avoid"] and second["avoid"]
+            else ""
+        )
+    )
+    why_fresh = preset.get(
+        "why_fresh",
+        f"It reassigns source roles instead of copying source verbs: {first['name']} contributes {_pick(first['system_functions'], first['notes'])} while {second['name']} contributes {_pick(second['system_functions'], second['notes'])}.",
+    )
+    why_understandable = preset.get(
+        "why_understandable",
+        "The board still communicates one clear action, one clear update, and one clear failure channel after every turn.",
+    )
+    board_setup = preset.get(
+        "board_setup",
+        f"A compact board combines {first['board_topology']} with {second['board_topology']} while keeping a single readable objective.",
+    )
+    object_rules = preset.get(
+        "object_rules",
+        "Every action must advance both source functions at once; if a rule only expresses one source superficially, it should be removed.",
+    )
+    win_condition = preset.get("win_condition", "Clear the board before the pressure system locks the run.")
+    lose_condition = preset.get("lose_condition", "The board pressure system blocks further productive play before the objective is complete.")
 
     return {
         "concept_name": concept_name,
@@ -213,62 +315,48 @@ def _fusion_summary(context: dict[str, Any]) -> dict[str, str]:
         "failure_pressure": failure_pressure,
         "game_line": source_names,
         "genre": "Hybrid casual puzzle",
-        "core_verb": preset.get("core_verb", f"{first['core_verb']} while respecting {second['core_verb']}"),
+        "core_verb": new_unified_verb,
         "board_topology": f"{first['board_topology']} fused with {second['board_topology']}",
-        "object_types": "colored packets, exits, screws, blockers, move budget",
+        "object_types": preset.get("object_types", "fused board pieces that preserve source functions without copying every source object"),
         "primary_decision": preset.get(
             "primary_decision",
-            f"how to apply {second['core_verb']} so {first['core_verb']} remains possible",
+            f"which unified action best preserves {first['name']}'s {_pick(first['system_functions'], first['core_verb'])} and {second['name']}'s {_pick(second['system_functions'], second['core_verb'])}",
         ),
         "skill_type": "forward planning with board readability",
         "pressure_type": failure_pressure,
         "failure_mode": f"{first['failure_mode']}; {second['failure_mode']}",
         "depth_source": f"{first['depth_source']} combined with {second['depth_source']}",
         "player_emotion": "clarity under pressure",
-        "why_it_works": preset.get(
-            "why_it_works",
-            f"It combines {first['notes']} with {second['notes']} in one readable move loop."
-            + (
-                f" The expected payoff is {first['fun_points'][0].lower()} plus {second['fun_points'][0].lower()}."
-                if first["fun_points"] and second["fun_points"]
-                else ""
-            ),
-        ),
-        "why_it_fails": (
-            "If the board state stops telegraphing which action is critical, the fusion collapses into guesswork."
-            + (
-                f" It must also avoid {first['avoid'][0].lower()} and {second['avoid'][0].lower()}."
-                if first["avoid"] and second["avoid"]
-                else ""
-            )
-        ),
-        "why_fresh": f"{first['name']} creates forward movement while {second['name']} makes access order the main tension.",
-        "why_understandable": f"Both sources have visible cause-effect: remove blocker, path opens; clear path, packet moves.",
+        "why_it_works": why_it_works,
+        "why_it_fails": why_it_fails,
+        "why_fresh": why_fresh,
+        "why_understandable": why_understandable,
         "likely_obstacles": "Over-complex states if too many blocker layers are introduced too early.",
         "production_risk": "Tuning puzzle readability without trivializing optimal order.",
         "prototype_scope": "One mechanic slice, two handcrafted levels, no progression layer.",
-        "reasons_fail": "If legal removals do not meaningfully change flow, the fusion feels stapled together.",
-        "board_setup": "Three horizontal lanes feed matching exits on the right. Screws occupy lane cells and can be removed only when exposed in their column.",
-        "object_rules": "Packets auto-claim a lane once every blocker in that lane is removed. Clicking an exposed screw removes it and spends one move.",
-        "win_condition": "All packets reach matching exits before the move budget is exhausted.",
-        "lose_condition": "Move budget hits zero before all lanes are opened.",
-        "level1_goal": "Teach exposed-screw removal and show that only some screws matter to opening flow.",
-        "level2_goal": "Introduce decoy screws so removal order creates real planning pressure.",
+        "reasons_fail": "If the fusion cannot explain why replacing the source verb creates a better unified loop, it will collapse into a stapled-together design.",
+        "board_setup": board_setup,
+        "object_rules": object_rules,
+        "win_condition": win_condition,
+        "lose_condition": lose_condition,
+        "level1_goal": preset.get("level1_goal", "Teach the unified interaction and show how both source functions appear through that one action."),
+        "level2_goal": preset.get("level2_goal", "Add a second pressure layer that forces role reassignment or future planning."),
         "ui_notes": "Show moves remaining, lane status, source names, and a visible win or lose banner.",
         "debug_controls": "Reset level only. No step control in the player-facing loop.",
         "non_goals": "Theme, economy, meta progression, animation polish.",
-        "success_criteria": "A new reader can predict the consequences of a removal before clicking it.",
-        "strengths": (
-            "High readability and clear fusion of route pressure with exposure order."
-            + (
-                f" It also preserves {first['winning_points'][0].lower()}."
-                if first["winning_points"]
-                else ""
-            )
-        ),
+        "success_criteria": "A new reader can predict the consequence of the next dispatch before committing it.",
+        "strengths": f"It preserves source functions instead of copying source verbs. It also protects {_pick(first['winning_points'], first['notes']).lower()} and {_pick(second['winning_points'], second['notes']).lower()}.",
         "weaknesses": "Current prototype depth is narrow and depends on handcrafted layouts.",
         "key_risks": "If layouts are too linear, the game becomes a lock-and-key exercise instead of a puzzle.",
         "recommendation": "Iterate",
+        "surface_form": _joined(first["surface_form"] + second["surface_form"], "literal source presentation"),
+        "system_functions": _joined(first["system_functions"] + second["system_functions"], "reusable puzzle functions"),
+        "replaceable_surface": replaceable_surface,
+        "source_a_functions": source_a_functions,
+        "source_b_functions": source_b_functions,
+        "new_unified_verb": new_unified_verb,
+        "literal_fusion_why_weaker": "literal side-by-side copying would preserve two separate interaction models instead of one coherent loop",
+        "input_behavior": input_behavior,
     }
 
 
@@ -344,7 +432,7 @@ def _value_for_key(key: str, context: dict[str, Any]) -> str:
         "Prototype Scope": fusion["prototype_scope"],
         "Reasons It May Fail": fusion["reasons_fail"],
         "Core Loop": fusion["core_loop"],
-        "Input Behavior": "Click an exposed screw to remove it. The board immediately recomputes which lanes are open.",
+        "Input Behavior": fusion["input_behavior"],
         "Board Setup": fusion["board_setup"],
         "Object Rules": fusion["object_rules"],
         "Win Condition": fusion["win_condition"],
@@ -683,7 +771,17 @@ def generate_director_brief(context: dict[str, Any]) -> str:
         "# Director Brief\n\n"
         f"Sources: {fusion['source_names']}\n\n"
         "Fusion Hypothesis:\n"
-        f"{fusion['concept_name']} should use {fusion['board_topology']} and center the turn around {fusion['primary_decision']}.\n\n"
+        f"{fusion['concept_name']} should preserve source functions, not source verbs. The board should use {fusion['board_topology']} and center the turn around {fusion['primary_decision']}.\n\n"
+        "Source A Functions To Preserve:\n"
+        f"{fusion['source_a_functions']}\n\n"
+        "Source B Functions To Preserve:\n"
+        f"{fusion['source_b_functions']}\n\n"
+        "Replaceable Surface Elements:\n"
+        f"{fusion['replaceable_surface']}\n\n"
+        "New Unified Player Verb:\n"
+        f"{fusion['new_unified_verb']}\n\n"
+        "Why Literal Fusion Is Weaker:\n"
+        f"{fusion['literal_fusion_why_weaker']}\n\n"
         "Board Promise:\n"
         f"{fusion['board_setup']}\n\n"
         "Turn Action:\n"
@@ -692,6 +790,8 @@ def generate_director_brief(context: dict[str, Any]) -> str:
         f"{fusion['failure_pressure']}\n\n"
         "Guardrails:\n"
         "- Do not describe the game as abstract domains only.\n"
+        "- Preserve system functions and winning points even when the source verb changes.\n"
+        "- Prefer one unified interaction model over two literal copied source loops.\n"
         "- Preserve a visible cause-effect chain after every move.\n"
         "- Keep the first prototype limited to one clear mechanic slice.\n"
     )
