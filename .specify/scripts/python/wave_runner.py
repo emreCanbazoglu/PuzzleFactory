@@ -7,6 +7,7 @@ from pathlib import Path
 from agent_runtime import (
     deterministic_scores,
     generate_director_brief,
+    generate_human_review_stub,
     generate_prototype_html,
     generate_text_artifact,
     write_metadata,
@@ -109,6 +110,23 @@ def run_cell(repo_root: Path, cfg: dict, wave_id: str, cell: dict) -> list[str]:
         context=context,
     )
     outputs.extend([ap, mp])
+
+    review_content, review_template = generate_human_review_stub(repo_root, context)
+    review_path = cell_output_path(repo_root, "evaluations", wave_id, cid, "human_review.md")
+    _write_text(review_path, review_content)
+    outputs.append(str(review_path))
+    review_meta = _metadata_path_for(review_path)
+    write_metadata(
+        metadata_path=review_meta,
+        wave_id=wave_id,
+        cell_id=cid,
+        role="human_feedback",
+        template_name=review_template,
+        profile={"name": "human", "provider": "human", "model": "n/a"},
+        artifact_path=review_path,
+        fallback_used=True,
+    )
+    outputs.append(str(review_meta))
 
     # Stage 2: concept design (conservative + novelty then merge)
     ap1, mp1 = _generate_stage_text(

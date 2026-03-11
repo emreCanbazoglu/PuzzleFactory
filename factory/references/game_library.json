@@ -26,6 +26,32 @@
       "provider": "app_store",
       "ingested_at": "2026-03-09"
     },
+    "human_notes": {
+      "winning_points": [
+        "Satisfaction comes from opening a clean route and watching the flow resolve correctly.",
+        "Surrounding conveyor and dock pressure creates urgency around route timing."
+      ],
+      "adopt": [
+        "Surrounding conveyor frame",
+        "Dock and slot pressure",
+        "Visual payoff when the route is finally correct"
+      ],
+      "avoid": [
+        "Overly empty boards with no route tension",
+        "Pure cosmetic pixel theme dependence"
+      ],
+      "main_goal": "Route colored units into the correct destinations before surrounding pressure causes failure.",
+      "stress_points": [
+        "Lane congestion",
+        "Slot overflow",
+        "Choosing the wrong opening first"
+      ],
+      "fun_points": [
+        "Flow resolution",
+        "Board cleanup",
+        "Seeing multiple constraints click together"
+      ]
+    },
     "last_verified_at": "2026-03-09"
   },
   {
@@ -56,6 +82,30 @@
       "ingested_at": "2026-03-09",
       "inference_confidence": "high"
     },
+    "human_notes": {
+      "winning_points": [
+        "The pleasure is in discovering the legal order hidden inside a crowded board.",
+        "Every removal changes future access, so choices feel consequential."
+      ],
+      "adopt": [
+        "Layered plate board layout",
+        "Colored screw readability",
+        "Exposure-order decision making"
+      ],
+      "avoid": [
+        "Random blocker removal with no access logic",
+        "Boards where every visible screw is equally good"
+      ],
+      "main_goal": "Clear the layered board by following the right exposure order.",
+      "stress_points": [
+        "Deadlocks from wrong removals",
+        "Tight access windows"
+      ],
+      "fun_points": [
+        "Revealing hidden options",
+        "Unlocking the next meaningful layer"
+      ]
+    },
     "last_verified_at": "2026-03-09"
   },
   {
@@ -85,6 +135,14 @@
       "provider": "app_store",
       "ingested_at": "2026-03-09"
     },
+    "human_notes": {
+      "winning_points": [],
+      "adopt": [],
+      "avoid": [],
+      "main_goal": "",
+      "stress_points": [],
+      "fun_points": []
+    },
     "last_verified_at": "2026-03-09"
   },
   {
@@ -111,6 +169,14 @@
       "source_link": "https://apps.apple.com/us/app/royal-match/id1482155847",
       "provider": "app_store",
       "ingested_at": "2026-03-09"
+    },
+    "human_notes": {
+      "winning_points": [],
+      "adopt": [],
+      "avoid": [],
+      "main_goal": "",
+      "stress_points": [],
+      "fun_points": []
     },
     "last_verified_at": "2026-03-09"
   },
@@ -139,6 +205,14 @@
       "source_link": "https://apps.apple.com/us/app/block-blast/id1617391485",
       "provider": "app_store",
       "ingested_at": "2026-03-09"
+    },
+    "human_notes": {
+      "winning_points": [],
+      "adopt": [],
+      "avoid": [],
+      "main_goal": "",
+      "stress_points": [],
+      "fun_points": []
     },
     "last_verified_at": "2026-03-09"
   }

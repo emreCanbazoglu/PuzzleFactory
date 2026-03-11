@@ -31,3 +31,5 @@
 15. Replaced the inert prototype stub with a deterministic blocker-removal puzzle that has win, lose, and reset states.
 16. Expanded agent role files into procedural instructions with explicit quality rules.
 17. Added a fusion director brief stage and passed its handoff into downstream concept/spec generation.
+18. Added a human review artifact per cell so feedback is part of the run output.
+19. Upgraded the Pixel Flow! + Screw Jam prototype from a mechanic demo to a conveyor-and-dock playable slice with level progression.

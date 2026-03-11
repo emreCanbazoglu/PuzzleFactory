@@ -68,8 +68,9 @@ class TestAgentRuntimeOutputs(unittest.TestCase):
                 ],
             }
         )
-        self.assertIn("All three packets can now flow", html)
-        self.assertIn("Remove exposed screws only", html)
+        self.assertIn("Dispatch a box from the dock", html)
+        self.assertIn("Each box can hold up to 3 matching screws", html)
+        self.assertIn("Next Level", html)
         self.assertNotIn("Deterministic prototype placeholder", html)
         self.assertNotIn("id=\"step\"", html)
 

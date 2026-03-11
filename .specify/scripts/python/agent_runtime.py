@@ -109,6 +109,7 @@ def _source_games(context: dict[str, Any]) -> list[dict[str, Any]]:
 
 def _normalize_game(game: dict[str, Any]) -> dict[str, Any]:
     override = PROFILE_OVERRIDES.get(game.get("id", ""), {})
+    human_notes = dict(game.get("human_notes", {}))
     return {
         "id": game.get("id", "unknown-game"),
         "name": game.get("name", "Unknown Game"),
@@ -119,6 +120,12 @@ def _normalize_game(game: dict[str, Any]) -> dict[str, Any]:
         "depth_source": game.get("depth_source") or override.get("depth_source", "forward planning"),
         "mechanics": list(game.get("mechanics", ["objective_variation"])),
         "notes": game.get("notes") or override.get("notes", "a readable mechanical loop"),
+        "main_goal": human_notes.get("main_goal", ""),
+        "winning_points": list(human_notes.get("winning_points", [])),
+        "adopt": list(human_notes.get("adopt", [])),
+        "avoid": list(human_notes.get("avoid", [])),
+        "stress_points": list(human_notes.get("stress_points", [])),
+        "fun_points": list(human_notes.get("fun_points", [])),
     }
 
 
@@ -220,9 +227,21 @@ def _fusion_summary(context: dict[str, Any]) -> dict[str, str]:
         "player_emotion": "clarity under pressure",
         "why_it_works": preset.get(
             "why_it_works",
-            f"It combines {first['notes']} with {second['notes']} in one readable move loop.",
+            f"It combines {first['notes']} with {second['notes']} in one readable move loop."
+            + (
+                f" The expected payoff is {first['fun_points'][0].lower()} plus {second['fun_points'][0].lower()}."
+                if first["fun_points"] and second["fun_points"]
+                else ""
+            ),
         ),
-        "why_it_fails": "If the board state stops telegraphing which action is critical, the fusion collapses into guesswork.",
+        "why_it_fails": (
+            "If the board state stops telegraphing which action is critical, the fusion collapses into guesswork."
+            + (
+                f" It must also avoid {first['avoid'][0].lower()} and {second['avoid'][0].lower()}."
+                if first["avoid"] and second["avoid"]
+                else ""
+            )
+        ),
         "why_fresh": f"{first['name']} creates forward movement while {second['name']} makes access order the main tension.",
         "why_understandable": f"Both sources have visible cause-effect: remove blocker, path opens; clear path, packet moves.",
         "likely_obstacles": "Over-complex states if too many blocker layers are introduced too early.",
@@ -239,7 +258,14 @@ def _fusion_summary(context: dict[str, Any]) -> dict[str, str]:
         "debug_controls": "Reset level only. No step control in the player-facing loop.",
         "non_goals": "Theme, economy, meta progression, animation polish.",
         "success_criteria": "A new reader can predict the consequences of a removal before clicking it.",
-        "strengths": "High readability and clear fusion of route pressure with exposure order.",
+        "strengths": (
+            "High readability and clear fusion of route pressure with exposure order."
+            + (
+                f" It also preserves {first['winning_points'][0].lower()}."
+                if first["winning_points"]
+                else ""
+            )
+        ),
         "weaknesses": "Current prototype depth is narrow and depends on handcrafted layouts.",
         "key_risks": "If layouts are too linear, the game becomes a lock-and-key exercise instead of a puzzle.",
         "recommendation": "Iterate",
@@ -411,9 +437,24 @@ def generate_text_artifact(
 
 
 def generate_prototype_html(context: dict[str, Any]) -> str:
+    ids = tuple(sorted(game["id"] for game in _source_games(context)))
+    if ids != ("ios-6471490579-screw-jam", "ios-6751056652-pixel-flow"):
+        title = _fusion_summary(context)["concept_name"]
+        return f"""<!doctype html>
+<html>
+<head><meta charset=\"utf-8\" /><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" /><title>{title}</title></head>
+<body style=\"margin:0;background:#111;color:#fff;font-family:monospace;\">
+<div style=\"max-width:920px;margin:0 auto;padding:24px;\">
+<h1>{title}</h1>
+<p>Fallback prototype. This fusion does not yet have a handcrafted playable loop.</p>
+</div>
+</body>
+</html>
+"""
+
     cid = context.get("cell_id", "cell")
-    source_names = _source_names(context)
     title = _fusion_summary(context)["concept_name"]
+    source_names = _source_names(context)
     return f"""<!doctype html>
 <html>
 <head>
@@ -421,43 +462,49 @@ def generate_prototype_html(context: dict[str, Any]) -> str:
   <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
   <title>{title}</title>
   <style>
-    :root {{ --bg: #0d1418; --panel: #162229; --ink: #f2efe4; --muted: #9eb2b7; --accent: #f06b47; --good: #3ac17e; --bad: #ef5350; }}
-    * {{ box-sizing: border-box; }}
-    body {{ margin: 0; background:
-      radial-gradient(circle at top left, rgba(240,107,71,0.18), transparent 30%),
-      linear-gradient(180deg, #0f171c 0%, #0a1014 100%);
-      color: var(--ink); font-family: Georgia, 'Times New Roman', serif; }}
-    .wrap {{ max-width: 1100px; margin: 0 auto; padding: 24px; }}
-    .header {{ display: grid; gap: 8px; margin-bottom: 18px; }}
-    .eyebrow {{ color: var(--muted); text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px; }}
-    h1 {{ margin: 0; font-size: clamp(28px, 4vw, 46px); }}
-    .sub {{ color: var(--muted); max-width: 760px; line-height: 1.4; }}
-    .panel {{ background: rgba(22,34,41,0.92); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; box-shadow: 0 20px 60px rgba(0,0,0,0.35); }}
-    .hud {{ display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; padding: 14px; margin-bottom: 16px; }}
-    .stat {{ padding: 12px; border-radius: 12px; background: rgba(255,255,255,0.04); }}
-    .stat .label {{ display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em; }}
-    .stat .value {{ display: block; margin-top: 6px; font-size: 20px; }}
-    .board {{ padding: 20px; }}
-    .lane {{ display: grid; grid-template-columns: 100px repeat(4, 90px) 100px; gap: 12px; align-items: center; margin-bottom: 14px; }}
-    .endpoint, .exit {{ padding: 14px; border-radius: 14px; text-align: center; font-weight: 700; }}
-    .endpoint {{ background: rgba(255,255,255,0.06); }}
-    .exit {{ border: 2px solid rgba(255,255,255,0.12); }}
-    .cell {{ height: 78px; border-radius: 16px; display: grid; place-items: center; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); position: relative; overflow: hidden; }}
-    .open::after {{ content: 'FLOW'; font-size: 12px; color: rgba(255,255,255,0.35); letter-spacing: 0.16em; }}
-    .screw {{ width: 62px; height: 62px; border-radius: 50%; border: 0; cursor: pointer; color: #0b1014; font-weight: 700; font-size: 12px; box-shadow: inset 0 -6px 0 rgba(0,0,0,0.18); }}
-    .screw:disabled {{ cursor: not-allowed; opacity: 0.45; }}
-    .row-packet {{ width: 50px; height: 50px; border-radius: 14px; display: grid; place-items: center; font-weight: 700; color: #081014; }}
-    .controls {{ display: flex; gap: 12px; padding: 0 20px 20px; }}
-    button.action {{ background: var(--accent); color: #fff; border: 0; padding: 12px 16px; border-radius: 999px; font-weight: 700; cursor: pointer; }}
-    .message {{ margin-top: 14px; padding: 14px; border-radius: 14px; }}
-    .win {{ background: rgba(58,193,126,0.14); color: #baf1d1; }}
-    .lose {{ background: rgba(239,83,80,0.14); color: #ffd0cf; }}
-    .rules {{ margin-top: 18px; padding: 18px; line-height: 1.45; color: var(--muted); }}
-    @media (max-width: 900px) {{
-      .hud {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
-      .lane {{ grid-template-columns: 70px repeat(4, 1fr) 70px; gap: 8px; }}
-      .cell {{ height: 64px; }}
-      .screw {{ width: 48px; height: 48px; }}
+    :root {{ --bg:#0d1418; --panel:#162229; --ink:#f2efe4; --muted:#9eb2b7; --accent:#f06b47; --good:#3ac17e; --bad:#ef5350; }}
+    * {{ box-sizing:border-box; }}
+    body {{ margin:0; background:radial-gradient(circle at top left, rgba(240,107,71,0.18), transparent 30%), linear-gradient(180deg, #0f171c 0%, #0a1014 100%); color:var(--ink); font-family:Georgia, 'Times New Roman', serif; }}
+    .wrap {{ max-width:1120px; margin:0 auto; padding:24px; }}
+    .header {{ display:grid; gap:8px; margin-bottom:18px; }}
+    .eyebrow {{ color:var(--muted); text-transform:uppercase; letter-spacing:0.14em; font-size:12px; }}
+    h1 {{ margin:0; font-size:clamp(28px, 4vw, 46px); }}
+    .sub {{ color:var(--muted); max-width:760px; line-height:1.45; }}
+    .panel {{ background:rgba(22,34,41,0.92); border:1px solid rgba(255,255,255,0.08); border-radius:18px; box-shadow:0 20px 60px rgba(0,0,0,0.35); }}
+    .hud {{ display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:12px; padding:14px; margin-bottom:16px; }}
+    .stat {{ padding:12px; border-radius:12px; background:rgba(255,255,255,0.04); }}
+    .label {{ display:block; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:0.14em; }}
+    .value {{ display:block; margin-top:6px; font-size:20px; }}
+    .board {{ padding:18px; }}
+    .dock {{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:12px; margin-bottom:16px; }}
+    .dock-slot {{ min-height:80px; border-radius:16px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); padding:10px; display:grid; gap:8px; }}
+    .dock-slot button {{ border:0; border-radius:12px; padding:12px; font-weight:700; cursor:pointer; }}
+    .dock-slot button:disabled {{ opacity:0.35; cursor:not-allowed; }}
+    .arena {{ position:relative; min-height:640px; overflow:hidden; }}
+    .frame {{ position:absolute; inset:46px; border-radius:34px; border:16px solid rgba(217,177,93,0.22); box-shadow:inset 0 0 0 1px rgba(255,255,255,0.08); }}
+    .center-board {{ position:absolute; left:50%; top:50%; transform:translate(-50%, -50%); width:360px; height:360px; border-radius:28px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); display:grid; grid-template-columns:repeat(3, 1fr); gap:18px; padding:28px; }}
+    .stack {{ border-radius:18px; background:rgba(0,0,0,0.18); border:1px solid rgba(255,255,255,0.06); display:flex; flex-direction:column-reverse; align-items:center; padding:18px 8px 10px; gap:8px; position:relative; }}
+    .stack-label {{ position:absolute; top:8px; left:10px; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:0.12em; }}
+    .screw-chip {{ width:56px; height:56px; border-radius:50%; display:grid; place-items:center; font-size:11px; font-weight:700; color:#091014; box-shadow:inset 0 -6px 0 rgba(0,0,0,0.18); }}
+    .screw-chip.hidden {{ opacity:0.24; filter:grayscale(0.45); }}
+    .boxes {{ position:absolute; inset:0; }}
+    .box {{ width:54px; height:54px; border-radius:16px; position:absolute; display:grid; place-items:center; font-weight:700; color:#091014; box-shadow:0 14px 24px rgba(0,0,0,0.28), inset 0 -6px 0 rgba(0,0,0,0.18); }}
+    .cap {{ position:absolute; bottom:-18px; font-size:11px; color:var(--ink); }}
+    .legend {{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px; margin-bottom:16px; }}
+    .legend-item {{ padding:12px; border-radius:14px; background:rgba(255,255,255,0.04); color:var(--muted); line-height:1.35; }}
+    .controls {{ display:flex; gap:12px; padding:0 0 20px; }}
+    button.action {{ background:var(--accent); color:#fff; border:0; padding:12px 16px; border-radius:999px; font-weight:700; cursor:pointer; }}
+    button.secondary {{ background:rgba(255,255,255,0.08); color:var(--ink); }}
+    .message {{ margin-top:14px; padding:14px; border-radius:14px; }}
+    .win {{ background:rgba(58,193,126,0.14); color:#baf1d1; }}
+    .lose {{ background:rgba(239,83,80,0.14); color:#ffd0cf; }}
+    .rules {{ margin-top:18px; padding:18px; line-height:1.45; color:var(--muted); }}
+    @media (max-width:900px) {{
+      .hud {{ grid-template-columns:repeat(2, minmax(0,1fr)); }}
+      .dock {{ grid-template-columns:1fr; }}
+      .legend {{ grid-template-columns:1fr; }}
+      .arena {{ min-height:760px; }}
+      .center-board {{ width:292px; height:292px; }}
     }}
   </style>
 </head>
@@ -466,113 +513,164 @@ def generate_prototype_html(context: dict[str, Any]) -> str:
     <div class=\"header\">
       <div class=\"eyebrow\">Playable Fusion Prototype</div>
       <h1>{title}</h1>
-      <div class=\"sub\">{source_names}. Remove only exposed screws. Each removal costs one move. A lane starts flowing once every screw in that lane is gone. Open all three lanes before moves run out.</div>
+      <div class=\"sub\">{source_names}. Send colored screwboxes from the dock onto the surrounding conveyor. Boxes collect matching exposed screws from layered stacks. Clear every stack before you run out of dispatches.</div>
     </div>
     <div class=\"panel hud\">
       <div class=\"stat\"><span class=\"label\">Cell</span><span class=\"value\">{cid}</span></div>
-      <div class=\"stat\"><span class=\"label\">Moves Left</span><span class=\"value\" id=\"moves\"></span></div>
-      <div class=\"stat\"><span class=\"label\">Open Lanes</span><span class=\"value\" id=\"lanesOpen\"></span></div>
+      <div class=\"stat\"><span class=\"label\">Dispatches Left</span><span class=\"value\" id=\"dispatches\"></span></div>
+      <div class=\"stat\"><span class=\"label\">Stacks Cleared</span><span class=\"value\" id=\"stacksCleared\"></span></div>
       <div class=\"stat\"><span class=\"label\">State</span><span class=\"value\" id=\"stateLabel\">Running</span></div>
     </div>
     <div class=\"panel board\">
-      <div id=\"board\"></div>
+      <div class=\"dock\" id=\"dock\"></div>
+      <div class=\"legend\">
+        <div class=\"legend-item\">Dispatch order matters. A box does one full conveyor lap, then exits.</div>
+        <div class=\"legend-item\">Only the top screw in each stack is exposed and collectible.</div>
+        <div class=\"legend-item\">Each box can hold up to 3 matching screws before it returns to dock.</div>
+      </div>
+      <div class=\"arena\">
+        <div class=\"frame\"></div>
+        <div class=\"center-board\" id=\"board\"></div>
+        <div class=\"boxes\" id=\"boxes\"></div>
+      </div>
       <div class=\"controls\">
         <button class=\"action\" id=\"reset\">Reset</button>
+        <button class=\"action secondary\" id=\"nextLevel\" style=\"display:none;\">Next Level</button>
       </div>
       <div id=\"message\"></div>
     </div>
-    <div class=\"panel rules\">
-      Source influence: Pixel Flow style lane completion plus Screw Jam style exposed-order removal. The correct play is not \"remove everything\". It is \"remove the few screws that unlock the three packet lanes inside the move budget\".
-    </div>
+    <div class=\"panel rules\">Source influence: Screw Jam gives the layered exposed-order stacks. Pixel Flow gives the surrounding conveyor, dock queue, and route pressure. The intended feeling is sending the right box at the right moment and watching the board unlock cleanly.</div>
   </div>
   <script>
-    const COLORS = {{
-      red: '#f06b47',
-      blue: '#46a6ff',
-      green: '#62c97f',
-      brass: '#d9b15d',
-      steel: '#a8b6c1'
-    }};
-    const INITIAL = {{
-      moves: 5,
-      screws: [
-        {{ id: 's1', lane: 0, col: 0, color: 'brass' }},
-        {{ id: 's2', lane: 1, col: 0, color: 'steel' }},
-        {{ id: 's3', lane: 2, col: 0, color: 'brass' }},
-        {{ id: 's4', lane: 1, col: 1, color: 'steel' }},
-        {{ id: 's5', lane: 0, col: 2, color: 'brass' }},
-        {{ id: 's6', lane: 2, col: 3, color: 'steel' }}
-      ],
-      packets: [
-        {{ lane: 0, color: 'red', label: 'R' }},
-        {{ lane: 1, color: 'blue', label: 'B' }},
-        {{ lane: 2, color: 'green', label: 'G' }}
-      ]
-    }};
-    let state = structuredClone(INITIAL);
-    function exposed(screw) {{
-      return !state.screws.some(other => other.col === screw.col && other.lane < screw.lane);
+    const COLORS = {{ red:'#f06b47', blue:'#46a6ff', green:'#62c97f' }};
+    const LEVELS = [
+      {{ dispatches:4, dockQueue:['red','blue','green','red','blue'], stacks:[{{ id:'A', screws:['blue','red'] }}, {{ id:'B', screws:['green','blue'] }}, {{ id:'C', screws:['red','green'] }}] }},
+      {{ dispatches:5, dockQueue:['blue','red','green','blue','red','green'], stacks:[{{ id:'A', screws:['green','blue','red'] }}, {{ id:'B', screws:['red','green','blue'] }}, {{ id:'C', screws:['blue','red','green'] }}] }}
+    ];
+    const PATH = [{{x:220,y:44}},{{x:380,y:44}},{{x:540,y:44}},{{x:636,y:140}},{{x:636,y:300}},{{x:636,y:460}},{{x:540,y:556}},{{x:380,y:556}},{{x:220,y:556}},{{x:124,y:460}},{{x:124,y:300}},{{x:124,y:140}}];
+    const STACK_VISITS = {{ A:[1,7], B:[3,9], C:[5,11] }};
+    let levelIndex = 0;
+    let state = createLevelState(levelIndex);
+    let lastTime = 0;
+    function createLevelState(index) {{
+      const level = LEVELS[index];
+      return {{ dispatchesLeft: level.dispatches, dockQueue: level.dockQueue.slice(), activeBox: null, delivered: {{red:0, blue:0, green:0}}, stacks: level.stacks.map(s => ({{ id:s.id, screws:s.screws.slice() }})), message: 'Dispatch a box from the dock. Matching top screws are collected automatically as the box passes.', finished: 'running' }};
     }}
-    function laneOpen(lane) {{
-      return !state.screws.some(s => s.lane === lane);
-    }}
+    function topScrew(stack) {{ return stack.screws.length ? stack.screws[stack.screws.length - 1] : null; }}
+    function stackClearedCount() {{ return state.stacks.filter(stack => stack.screws.length === 0).length; }}
     function stateKind() {{
-      const openCount = state.packets.filter(p => laneOpen(p.lane)).length;
-      if (openCount === state.packets.length) return 'win';
-      if (state.moves <= 0) return 'lose';
-      const hasMove = state.screws.some(exposed);
-      return hasMove ? 'running' : 'lose';
+      if (stackClearedCount() === state.stacks.length) return 'win';
+      if (state.dispatchesLeft <= 0 && !state.activeBox) return 'lose';
+      return 'running';
     }}
-    function removeScrew(id) {{
-      const screw = state.screws.find(s => s.id === id);
-      if (!screw || !exposed(screw) || stateKind() !== 'running') return;
-      state.screws = state.screws.filter(s => s.id !== id);
-      state.moves -= 1;
+    function dispatchBox(slotIndex) {{
+      if (state.activeBox || state.dispatchesLeft <= 0 || state.finished !== 'running') return;
+      if (slotIndex < 0 || slotIndex >= Math.min(3, state.dockQueue.length)) return;
+      const color = state.dockQueue.splice(slotIndex, 1)[0];
+      state.activeBox = {{ color, pathIndex:0, progress:0, collected:0, capacity:3, visited:new Set() }};
+      state.dispatchesLeft -= 1;
+      state.message = color.toUpperCase() + ' box launched. Watch which exposed screws it can collect this lap.';
       render();
     }}
-    function laneRow(packet) {{
-      const cells = [];
-      for (let col = 0; col < 4; col += 1) {{
-        const screw = state.screws.find(s => s.lane === packet.lane && s.col === col);
-        if (screw) {{
-          cells.push(`<div class="cell"><button class="screw" data-id="${{screw.id}}" style="background:${{COLORS[screw.color]}};" ${{exposed(screw) ? '' : 'disabled'}}>${{exposed(screw) ? 'EXPOSED' : 'LOCKED'}}</button></div>`);
-        }} else {{
-          cells.push('<div class="cell open"></div>');
+    function collectAtVisit(visitIndex) {{
+      if (!state.activeBox) return;
+      for (const stack of state.stacks) {{
+        if (!STACK_VISITS[stack.id].includes(visitIndex)) continue;
+        const key = stack.id + ':' + visitIndex;
+        if (state.activeBox.visited.has(key)) continue;
+        state.activeBox.visited.add(key);
+        const top = topScrew(stack);
+        if (top && top === state.activeBox.color && state.activeBox.collected < state.activeBox.capacity) {{
+          stack.screws.pop();
+          state.activeBox.collected += 1;
+          state.message = state.activeBox.color.toUpperCase() + ' box collected a screw from stack ' + stack.id + '.';
         }}
       }}
-      return `<div class="lane">
-        <div class="endpoint" style="background:${{COLORS[packet.color]}}22;border:1px solid ${{COLORS[packet.color]}};"><div class="row-packet" style="background:${{COLORS[packet.color]}};">${{packet.label}}</div></div>
-        ${{cells.join('')}}
-        <div class="exit" style="background:${{laneOpen(packet.lane) ? COLORS[packet.color] + '22' : 'rgba(255,255,255,0.05)'}};border-color:${{COLORS[packet.color]}};">${{laneOpen(packet.lane) ? 'FLOWING' : 'EXIT'}}</div>
-      </div>`;
+    }}
+    function update(dt) {{
+      if (!state.activeBox || state.finished !== 'running') return;
+      state.activeBox.progress += dt * 0.0006;
+      while (state.activeBox.progress >= 1) {{
+        state.activeBox.progress -= 1;
+        state.activeBox.pathIndex += 1;
+        if (state.activeBox.pathIndex >= PATH.length) {{
+          state.delivered[state.activeBox.color] += state.activeBox.collected;
+          state.message = state.activeBox.color.toUpperCase() + ' box returned to dock carrying ' + state.activeBox.collected + ' screw(s).';
+          state.activeBox = null;
+          state.finished = stateKind();
+          render();
+          return;
+        }}
+        collectAtVisit(state.activeBox.pathIndex);
+      }}
+      state.finished = stateKind();
+    }}
+    function boxPosition() {{
+      if (!state.activeBox) return null;
+      const a = PATH[state.activeBox.pathIndex % PATH.length];
+      const b = PATH[(state.activeBox.pathIndex + 1) % PATH.length];
+      const t = state.activeBox.progress;
+      return {{ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }};
+    }}
+    function renderDock() {{
+      const dock = document.getElementById('dock');
+      dock.innerHTML = [0,1,2].map(index => {{
+        const color = state.dockQueue[index];
+        if (!color) return `<div class="dock-slot"><div class="label">Dock Slot ${{index + 1}}</div><div>Empty</div></div>`;
+        return `<div class="dock-slot"><div class="label">Dock Slot ${{index + 1}}</div><button data-dispatch="${{index}}" style="background:${{COLORS[color]}}; color:#091014;" ${{state.activeBox || state.finished !== 'running' ? 'disabled' : ''}}>Dispatch ${{color.toUpperCase()}} box</button></div>`;
+      }}).join('');
+      dock.querySelectorAll('button[data-dispatch]').forEach(btn => btn.addEventListener('click', () => dispatchBox(Number(btn.dataset.dispatch))));
+    }}
+    function renderBoard() {{
+      document.getElementById('board').innerHTML = state.stacks.map(stack => {{
+        const chips = stack.screws.map((color, idx) => `<div class="screw-chip ${{idx === stack.screws.length - 1 ? '' : 'hidden'}}" style="background:${{COLORS[color]}};">${{idx === stack.screws.length - 1 ? color.toUpperCase() : ''}}</div>`).join('');
+        return `<div class="stack"><div class="stack-label">Stack ${{stack.id}}</div>${{chips || '<div class="screw-chip hidden" style="background:rgba(255,255,255,0.06);color:var(--muted);">CLEAR</div>'}}</div>`;
+      }}).join('');
+    }}
+    function renderBoxes() {{
+      const root = document.getElementById('boxes');
+      if (!state.activeBox) {{ root.innerHTML = ''; return; }}
+      const pos = boxPosition();
+      root.innerHTML = `<div class="box" style="left:${{pos.x}}px; top:${{pos.y}}px; background:${{COLORS[state.activeBox.color]}}; transform:translate(-50%, -50%);">${{state.activeBox.color.slice(0,1).toUpperCase()}}<div class="cap">${{state.activeBox.collected}}/${{state.activeBox.capacity}}</div></div>`;
     }}
     function render() {{
-      document.getElementById('moves').textContent = String(state.moves);
-      document.getElementById('lanesOpen').textContent = String(state.packets.filter(p => laneOpen(p.lane)).length) + '/3';
-      document.getElementById('board').innerHTML = state.packets.map(laneRow).join('');
-      document.querySelectorAll('.screw').forEach(btn => btn.addEventListener('click', () => removeScrew(btn.dataset.id)));
-      const kind = stateKind();
-      const stateLabel = document.getElementById('stateLabel');
+      document.getElementById('dispatches').textContent = String(state.dispatchesLeft);
+      document.getElementById('stacksCleared').textContent = String(stackClearedCount()) + '/' + state.stacks.length;
+      renderDock();
+      renderBoard();
+      renderBoxes();
       const message = document.getElementById('message');
-      if (kind === 'win') {{
+      const stateLabel = document.getElementById('stateLabel');
+      const nextLevel = document.getElementById('nextLevel');
+      if (state.finished === 'win') {{
         stateLabel.textContent = 'Win';
         message.className = 'message win';
-        message.textContent = 'All three packets can now flow. This board is solved.';
-      }} else if (kind === 'lose') {{
+        message.textContent = 'Board cleared. You sent the right boxes in the right order and the layered screws collapsed cleanly.';
+        nextLevel.style.display = levelIndex < LEVELS.length - 1 ? 'inline-flex' : 'none';
+      }} else if (state.finished === 'lose') {{
         stateLabel.textContent = 'Lose';
         message.className = 'message lose';
-        message.textContent = 'You ran out of useful removals before opening every lane.';
+        message.textContent = 'You ran out of dispatches before clearing every stack. Retry and change the box order.';
+        nextLevel.style.display = 'none';
       }} else {{
-        stateLabel.textContent = 'Running';
+        stateLabel.textContent = state.activeBox ? 'Conveyor Running' : 'Awaiting Dispatch';
         message.className = 'message';
-        message.textContent = 'Remove exposed screws only. Hidden screws become exposed after blockers above them are cleared.';
+        message.textContent = state.message;
+        nextLevel.style.display = 'none';
       }}
     }}
-    document.getElementById('reset').addEventListener('click', () => {{
-      state = structuredClone(INITIAL);
-      render();
-    }});
+    function tick(ts) {{
+      const dt = lastTime ? (ts - lastTime) : 16;
+      lastTime = ts;
+      update(dt);
+      renderBoxes();
+      requestAnimationFrame(tick);
+    }}
+    function resetLevel() {{ state = createLevelState(levelIndex); lastTime = 0; render(); }}
+    document.getElementById('reset').addEventListener('click', resetLevel);
+    document.getElementById('nextLevel').addEventListener('click', () => {{ if (levelIndex < LEVELS.length - 1) {{ levelIndex += 1; resetLevel(); }} }});
     render();
+    requestAnimationFrame(tick);
   </script>
 </body>
 </html>
@@ -597,6 +695,18 @@ def generate_director_brief(context: dict[str, Any]) -> str:
         "- Preserve a visible cause-effect chain after every move.\n"
         "- Keep the first prototype limited to one clear mechanic slice.\n"
     )
+
+
+def generate_human_review_stub(repo_root: Path, context: dict[str, Any]) -> tuple[str, str]:
+    template_path = repo_root / "templates" / "human_review.md"
+    template_text = read_text(template_path)
+    fusion = _fusion_summary(context)
+    content = (
+        template_text.replace("Wave:", f"Wave: {context.get('wave_id', '')}")
+        .replace("Cell:", f"Cell: {context.get('cell_id', '')}")
+        .replace("Concept Name:", f"Concept Name: {fusion['concept_name']}")
+    )
+    return content, "human_review.md"
 
 
 def deterministic_scores(cell_id: str, domain: str) -> dict[str, float]:
