@@ -38,6 +38,19 @@
       "prototype_builder_web"
     ]
   },
+  "models": {
+    "cloud": {
+      "provider": "mock",
+      "model": "mock-cloud"
+    },
+    "local": {
+      "provider": "mock",
+      "model": "mock-local"
+    }
+  },
+  "execution": {
+    "allow_mock_fallback": true
+  },
   "decision_policy": {
     "weights": {
       "clarity": 0.25,

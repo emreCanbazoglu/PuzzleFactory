@@ -50,6 +50,29 @@ def validate(path: Path) -> None:
     if not isinstance(decision, dict):
         fail("decision_policy must be an object")
 
+    models = data.get("models")
+    if models is not None:
+        if not isinstance(models, dict):
+            fail("models must be an object when provided")
+        for key in ("cloud", "local"):
+            if key in models:
+                profile = models[key]
+                if not isinstance(profile, dict):
+                    fail(f"models.{key} must be an object")
+                provider = profile.get("provider")
+                if provider is not None and provider not in {"openai", "ollama", "mock"}:
+                    fail(f"models.{key}.provider must be one of openai|ollama|mock")
+                model = profile.get("model")
+                if model is not None and (not isinstance(model, str) or not model.strip()):
+                    fail(f"models.{key}.model must be a non-empty string when provided")
+
+    execution = data.get("execution")
+    if execution is not None:
+        if not isinstance(execution, dict):
+            fail("execution must be an object when provided")
+        if "allow_mock_fallback" in execution and not isinstance(execution["allow_mock_fallback"], bool):
+            fail("execution.allow_mock_fallback must be boolean")
+
     human = data.get("human_feedback")
     if human is not None:
         if not isinstance(human, dict):
