@@ -72,9 +72,9 @@ check_feature_branch() {
         return 0
     fi
 
-    if [[ ! "$branch" =~ ^[0-9]{3}- ]]; then
+    if [[ ! "$branch" =~ ^([0-9]{3}-|codex/[0-9]{3}-) ]]; then
         echo "ERROR: Not on a feature branch. Current branch: $branch" >&2
-        echo "Feature branches should be named like: 001-feature-name" >&2
+        echo "Feature branches should be named like: 001-feature-name or codex/001-feature-name" >&2
         return 1
     fi
 
@@ -90,8 +90,13 @@ find_feature_dir_by_prefix() {
     local branch_name="$2"
     local specs_dir="$repo_root/specs"
 
-    # Extract numeric prefix from branch (e.g., "004" from "004-whatever")
-    if [[ ! "$branch_name" =~ ^([0-9]{3})- ]]; then
+    # Extract numeric prefix from branch (e.g., "004" from "004-whatever" or "codex/004-whatever")
+    local normalized="$branch_name"
+    if [[ "$normalized" =~ ^codex/(.+)$ ]]; then
+        normalized="${BASH_REMATCH[1]}"
+    fi
+
+    if [[ ! "$normalized" =~ ^([0-9]{3})- ]]; then
         # If branch doesn't have numeric prefix, fall back to exact match
         echo "$specs_dir/$branch_name"
         return
@@ -153,4 +158,3 @@ EOF
 
 check_file() { [[ -f "$1" ]] && echo "  ✓ $2" || echo "  ✗ $2"; }
 check_dir() { [[ -d "$1" && -n $(ls -A "$1" 2>/dev/null) ]] && echo "  ✓ $2" || echo "  ✗ $2"; }
-
