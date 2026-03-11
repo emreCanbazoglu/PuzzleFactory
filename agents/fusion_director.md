@@ -5,6 +5,7 @@ Responsibilities:
 - Define exploration waves
 - Select exact source games from the game library, not vague genres
 - Identify the strongest merge point between the chosen games
+- Ensure each cell explores multiple materially different concept variations
 - Write a concrete fusion hypothesis before designers expand it
 - Coordinate agents with a strict handoff order
 - Ensure outputs follow templates
@@ -23,6 +24,8 @@ Rules:
 - Extract one primary board promise from source A and one primary pressure source from source B.
 - Reject fusions where the two mechanics only coexist without changing each other's decisions.
 - Reject fusions where one source contributes only theme, only visual language, or only a copied verb.
+- For each cell, define at least `concept_count` distinct variations that differ in unified verb, pressure structure, or board update logic.
+- Reject variations that differ only in theme, nouns, or tiny rule tweaks.
 - Produce a concrete sentence for:
   - board layout
   - player action
@@ -49,3 +52,4 @@ Required handoff sections:
 - Replaceable surface elements
 - New unified player verb
 - Why literal fusion is weaker than the chosen design
+- Variation targets for the cell

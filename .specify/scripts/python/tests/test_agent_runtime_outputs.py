@@ -75,6 +75,7 @@ class TestAgentRuntimeOutputs(unittest.TestCase):
         self.assertIn("Replaceable Surface Elements", brief)
         self.assertIn("New Unified Player Verb", brief)
         self.assertIn("Why Literal Fusion Is Weaker", brief)
+        self.assertIn("Variation Targets For This Cell", brief)
 
     def test_generated_prototype_is_not_step_placeholder(self):
         html = generate_prototype_html(

@@ -48,6 +48,9 @@ PAIR_PRESETS = {
         "lose_condition": "Queue or overflow pressure locks the system before the board is cleared.",
         "level1_goal": "Teach that only exposed screws are collectible and that dispatch order matters more than raw speed.",
         "level2_goal": "Introduce a tempting wrong-color queue front so the player must clear for future access before sending the ideal collector.",
+        "variation_1": "Dispatch colored boxes from top-only dock queues onto the conveyor to collect exposed screws from a static layered board.",
+        "variation_2": "Use the conveyor as a rotating assignment system where each dispatched box commits to one plate, so plate-collapse order matters more than immediate collection count.",
+        "variation_3": "Focus on queue-clearing decisions: sometimes the right move is to send a weak front box only to surface the high-value color needed for the next reveal state.",
     },
     ("ios-1482155847-royal-match", "ios-1514542157-water-sort-puzzle"): {
         "concept_name": "Cascade Decant",
@@ -74,7 +77,7 @@ PROFILE_OVERRIDES = {
         "system_functions": [
             "surrounding conveyor delivery loop",
             "top-of-queue dispatch restriction",
-            "outside-in board clearing",
+            "progressive clearance of currently reachable perimeter targets",
             "color and quantity matching against exposed targets",
             "slot or overflow pressure from returning units",
         ],
@@ -243,6 +246,9 @@ def _fusion_summary(context: dict[str, Any]) -> dict[str, str]:
             "new_unified_verb": "make one meaningful move that advances the board",
             "literal_fusion_why_weaker": "literal side-by-side copying would create two competing interaction models",
             "input_behavior": "Click the primary puzzle piece to make one meaningful deterministic move.",
+            "variation_1": "Variation 1 should keep source A's board promise and source B's pressure source.",
+            "variation_2": "Variation 2 should keep source B's board promise and source A's pressure source.",
+            "variation_3": "Variation 3 should reassign one source object's role to perform the other source's function.",
         }
 
     first, second = sources[0], sources[1]
@@ -274,6 +280,18 @@ def _fusion_summary(context: dict[str, Any]) -> dict[str, str]:
     input_behavior = preset.get(
         "input_behavior",
         "Use a single unified input that preserves both source games' strategic functions instead of copying both source verbs.",
+    )
+    variation_1 = preset.get(
+        "variation_1",
+        f"Variation 1: Keep {first['name']}'s board promise but let {second['name']}'s pressure source drive the fail state.",
+    )
+    variation_2 = preset.get(
+        "variation_2",
+        f"Variation 2: Keep {second['name']}'s board promise but let {first['name']}'s pressure source drive the fail state.",
+    )
+    variation_3 = preset.get(
+        "variation_3",
+        f"Variation 3: Reassign one of {first['name']}'s objects so it performs {second['name']}'s gameplay job inside a unified loop.",
     )
     why_it_works = preset.get(
         "why_it_works",
@@ -357,6 +375,9 @@ def _fusion_summary(context: dict[str, Any]) -> dict[str, str]:
         "new_unified_verb": new_unified_verb,
         "literal_fusion_why_weaker": "literal side-by-side copying would preserve two separate interaction models instead of one coherent loop",
         "input_behavior": input_behavior,
+        "variation_1": variation_1,
+        "variation_2": variation_2,
+        "variation_3": variation_3,
     }
 
 
@@ -771,7 +792,7 @@ def generate_director_brief(context: dict[str, Any]) -> str:
         "# Director Brief\n\n"
         f"Sources: {fusion['source_names']}\n\n"
         "Fusion Hypothesis:\n"
-        f"{fusion['concept_name']} should preserve source functions, not source verbs. The board should use {fusion['board_topology']} and center the turn around {fusion['primary_decision']}.\n\n"
+        f"{fusion['concept_name']} should preserve source functions, not source verbs. Use this board promise: {fusion['board_setup']} The central turn question is {fusion['primary_decision']}.\n\n"
         "Source A Functions To Preserve:\n"
         f"{fusion['source_a_functions']}\n\n"
         "Source B Functions To Preserve:\n"
@@ -782,6 +803,10 @@ def generate_director_brief(context: dict[str, Any]) -> str:
         f"{fusion['new_unified_verb']}\n\n"
         "Why Literal Fusion Is Weaker:\n"
         f"{fusion['literal_fusion_why_weaker']}\n\n"
+        "Variation Targets For This Cell:\n"
+        f"- {fusion['variation_1']}\n"
+        f"- {fusion['variation_2']}\n"
+        f"- {fusion['variation_3']}\n\n"
         "Board Promise:\n"
         f"{fusion['board_setup']}\n\n"
         "Turn Action:\n"
