@@ -34,3 +34,7 @@ Output:
 - One validation report
 - One question list for the human per entry when needed
 - Clear status per entry: `ready`, `needs_human_clarification`, or `invalid`
+
+This role is a batch gatekeeper, not the human discussion loop.
+
+When an entry needs clarification, hand off to `game_library_reviewer`.

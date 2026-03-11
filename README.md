@@ -95,7 +95,13 @@ python3 .specify/scripts/python/check_template_fields.py
 python3 .specify/scripts/python/validate_game_library.py
 ```
 
-6. Resume from first unchecked task in the active feature `tasks.md`.
+6. If a game needs clarification, prepare a one-game review brief:
+
+```bash
+python3 .specify/scripts/python/prepare_game_library_review.py <game_id>
+```
+
+7. Resume from first unchecked task in the active feature `tasks.md`.
 
 ## Wave 001 State Tracking
 
