@@ -451,6 +451,9 @@ def _http_post_json(url: str, payload: dict[str, Any], headers: dict[str, str], 
 
 
 def call_provider(profile: dict[str, str], prompt: str) -> str:
+    import subprocess
+    import tempfile
+
     provider = profile.get("provider", "mock")
     model = profile.get("model", "")
 
@@ -478,6 +481,86 @@ def call_provider(profile: dict[str, str], prompt: str) -> str:
         }
         data = _http_post_json(url, payload, {})
         return data.get("message", {}).get("content", "")
+
+    if provider == "claude":
+        # Shells out to the Claude Code CLI — no API key required.
+        # Strip ANTHROPIC_API_KEY so the CLI uses its own stored session.
+        cli = os.getenv("CLAUDE_CLI_PATH", "claude")
+        timeout = float(os.getenv("PF_CLAUDE_CLI_TIMEOUT_SECONDS", "120"))
+        claude_env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
+        try:
+            result = subprocess.run(
+                [cli, "-p", prompt, "--output-format", "json"],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                env=claude_env,
+            )
+        except FileNotFoundError as exc:
+            raise RuntimeError(
+                f"Claude Code CLI not found at '{cli}'. "
+                "Install from https://claude.ai/code or set CLAUDE_CLI_PATH."
+            ) from exc
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError(
+                f"Claude Code CLI timed out after {timeout}s. "
+                "Increase PF_CLAUDE_CLI_TIMEOUT_SECONDS."
+            ) from exc
+        if result.returncode != 0:
+            detail = (result.stderr or result.stdout or "").strip()[:400]
+            raise RuntimeError(f"Claude Code CLI exited {result.returncode}: {detail}")
+        # --output-format json wraps the reply in {"result": "...", ...}
+        try:
+            envelope = json.loads(result.stdout)
+            return str(envelope.get("result") or envelope.get("content") or result.stdout)
+        except json.JSONDecodeError:
+            return result.stdout
+
+    if provider == "codex":
+        # Shells out to the OpenAI Codex CLI — uses stored Codex session, not OPENAI_API_KEY.
+        # Strip OPENAI_API_KEY so Codex falls back to its own session credentials.
+        cli = os.getenv("CODEX_CLI_PATH", "codex")
+        codex_model = os.getenv("PF_CODEX_CLI_MODEL", "gpt-5.3-codex")
+        timeout = float(os.getenv("PF_CODEX_CLI_TIMEOUT_SECONDS", "120"))
+        codex_env = {k: v for k, v in os.environ.items() if k != "OPENAI_API_KEY"}
+        output_fd, output_path = tempfile.mkstemp(suffix=".txt")
+        try:
+            os.close(output_fd)
+            try:
+                result = subprocess.run(
+                    [
+                        cli, "exec",
+                        "-m", codex_model,
+                        "--dangerously-bypass-approvals-and-sandbox",
+                        "--ephemeral",
+                        "-o", output_path,
+                        prompt,
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout,
+                    env=codex_env,
+                )
+            except FileNotFoundError as exc:
+                raise RuntimeError(
+                    f"OpenAI Codex CLI not found at '{cli}'. "
+                    "Install from https://openai.com/codex or set CODEX_CLI_PATH."
+                ) from exc
+            except subprocess.TimeoutExpired as exc:
+                raise RuntimeError(
+                    f"OpenAI Codex CLI timed out after {timeout}s. "
+                    "Increase PF_CODEX_CLI_TIMEOUT_SECONDS."
+                ) from exc
+            if result.returncode != 0:
+                detail = (result.stderr or result.stdout or "").strip()[:400]
+                raise RuntimeError(f"OpenAI Codex CLI exited {result.returncode}: {detail}")
+            with open(output_path, encoding="utf-8") as fh:
+                return fh.read()
+        finally:
+            try:
+                os.unlink(output_path)
+            except OSError:
+                pass
 
     raise RuntimeError(f"provider not available: {provider}")
 

@@ -22,7 +22,7 @@ def _default_profile(kind: str) -> dict[str, str]:
     base_url_env = "OPENAI_BASE_URL" if kind == "cloud" else "OLLAMA_BASE_URL"
 
     provider = os.getenv(provider_env, "mock").strip().lower()
-    if provider not in {"openai", "ollama", "mock"}:
+    if provider not in {"openai", "ollama", "claude", "codex", "mock"}:
         provider = "mock"
 
     model_default = "gpt-5-mini" if provider == "openai" else "qwen3:14b"
