@@ -12,7 +12,7 @@ It is the evolved successor to PuzzleFusionEngine. Where PuzzleFusionEngine is a
 
 ```bash
 # Install Python dependencies (includes Playwright for prototype iteration)
-pip install -r .specify/scripts/python/requirements.txt
+pip3 install -r .specify/scripts/python/requirements.txt --break-system-packages
 playwright install chromium   # one-time: downloads headless Chromium
 
 # Run a wave (from repo root)
