@@ -5,28 +5,10 @@
       "cell_id": "cell_a",
       "discovery_domain": "sort",
       "prototype_domain": "sort",
-      "source_game_ids": ["ios-6751056652-pixel-flow", "ios-6471490579-screw-jam"],
-      "concept_count": 3
-    },
-    {
-      "cell_id": "cell_b",
-      "discovery_domain": "block",
-      "prototype_domain": "block",
-      "source_game_ids": ["ios-1617391485-block-blast", "ios-6471490579-screw-jam"],
-      "concept_count": 3
-    },
-    {
-      "cell_id": "cell_c",
-      "discovery_domain": "color_match",
-      "prototype_domain": "match3",
-      "source_game_ids": ["ios-1482155847-royal-match", "ios-1514542157-water-sort-puzzle"],
-      "concept_count": 3
-    },
-    {
-      "cell_id": "cell_d",
-      "discovery_domain": "spatial",
-      "prototype_domain": "spatial",
-      "source_game_ids": ["ios-6751056652-pixel-flow", "ios-1617391485-block-blast"],
+      "source_game_ids": [
+        "ios-6751056652-pixel-flow",
+        "ios-6471490579-screw-jam"
+      ],
       "concept_count": 3
     }
   ],
@@ -41,16 +23,6 @@
     "local_roles": [
       "prototype_builder_web"
     ]
-  },
-  "models": {
-    "cloud": {
-      "provider": "mock",
-      "model": "mock-cloud"
-    },
-    "local": {
-      "provider": "mock",
-      "model": "mock-local"
-    }
   },
   "execution": {
     "allow_mock_fallback": true
@@ -79,5 +51,12 @@
     "mode": "advisory_window",
     "timeout_hours": 24,
     "override_scope": "per_concept"
+  },
+  "prototype_iteration": {
+    "enabled": true,
+    "max_rounds": 4,
+    "levels": ["errors", "visual"],
+    "budget_seconds": 300,
+    "pass_threshold": 4
   }
 }

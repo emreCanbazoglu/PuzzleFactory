@@ -90,6 +90,31 @@ def validate(path: Path) -> None:
         if not isinstance(timeout, int) or timeout < 0:
             fail("human_feedback.timeout_hours must be integer >= 0")
 
+    proto_iter = data.get("prototype_iteration")
+    if proto_iter is not None:
+        if not isinstance(proto_iter, dict):
+            fail("prototype_iteration must be an object when provided")
+        if "enabled" in proto_iter and not isinstance(proto_iter["enabled"], bool):
+            fail("prototype_iteration.enabled must be boolean")
+        if "max_rounds" in proto_iter and (
+            not isinstance(proto_iter["max_rounds"], int) or proto_iter["max_rounds"] < 1
+        ):
+            fail("prototype_iteration.max_rounds must be integer >= 1")
+        if "pass_threshold" in proto_iter and (
+            not isinstance(proto_iter["pass_threshold"], int) or proto_iter["pass_threshold"] < 0
+        ):
+            fail("prototype_iteration.pass_threshold must be integer >= 0")
+        if "budget_seconds" in proto_iter and (
+            not isinstance(proto_iter["budget_seconds"], (int, float))
+            or proto_iter["budget_seconds"] <= 0
+        ):
+            fail("prototype_iteration.budget_seconds must be a positive number")
+        if "levels" in proto_iter:
+            allowed_levels = {"errors", "visual", "mechanic"}
+            for lv in proto_iter["levels"]:
+                if lv not in allowed_levels:
+                    fail(f"prototype_iteration.levels contains unknown level '{lv}'")
+
     print(f"OK: run config valid -> {path}")
 
 

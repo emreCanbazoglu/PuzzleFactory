@@ -17,6 +17,7 @@ from agent_runtime import (
 from game_library import resolve_games
 from model_router import resolve_profile_for_role
 from path_guard import cell_output_path
+from prototype_iteration_runner import run_iteration_loop
 from run_state import add_cell_artifact, load_or_init_state, now_iso, set_cell_status, write_state
 
 
@@ -231,6 +232,21 @@ def run_cell(repo_root: Path, cfg: dict, wave_id: str, cell: dict) -> list[str]:
         fallback_used=True,
     )
     outputs.append(str(prototype_meta))
+
+    # Stage 4b: prototype iteration loop (optional)
+    iteration_cfg = cfg.get("prototype_iteration", {})
+    if iteration_cfg.get("enabled"):
+        iteration_profile = resolve_profile_for_role(cfg, "fusion_director")
+        iter_result = run_iteration_loop(
+            html_path=prototype_path,
+            repo_root=repo_root,
+            wave_id=wave_id,
+            cell_id=cid,
+            iteration_config=iteration_cfg,
+            profile=iteration_profile,
+            config=cfg,
+        )
+        outputs.append(iter_result["log_path"])
 
     # Stage 5: evaluation
     ap, mp = _generate_stage_text(

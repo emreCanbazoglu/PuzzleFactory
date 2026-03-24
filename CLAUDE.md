@@ -11,9 +11,13 @@ It is the evolved successor to PuzzleFusionEngine. Where PuzzleFusionEngine is a
 ## Development Commands
 
 ```bash
+# Install Python dependencies (includes Playwright for prototype iteration)
+pip install -r .specify/scripts/python/requirements.txt
+playwright install chromium   # one-time: downloads headless Chromium
+
 # Run a wave (from repo root)
 cd .specify/scripts/python
-python wave_runner.py ../../../runs/wave_001/run_config.json
+python3 wave_runner.py ../../../runs/wave_001/run_config.json
 
 # Run all tests
 cd .specify/scripts/python
@@ -148,6 +152,28 @@ Supported providers:
 | `mock` | Fills templates deterministically — no LLM | Nothing |
 
 `mock` is the default. Enable `allow_mock_fallback: true` in `run_config.json` to fall back to mock when a real provider fails, rather than aborting.
+
+### Prototype Iteration Loop (spec 014)
+
+After `prototype_builder_web` generates `prototype.html`, an optional closed feedback loop runs:
+
+1. **Run** — load HTML in headless Playwright Chromium, capture JS errors + two screenshots
+2. **Critique** — Claude vision CLI evaluates screenshots against a 5-point rubric (`board_visible`, `elements_present`, `interactive_hint`, `state_changed`, `readable`)
+3. **Patch** — Claude CLI rewrites the HTML targeting failed criteria
+4. **Repeat** — up to `max_rounds`, or until `pass_threshold` criteria pass
+
+Enable in `run_config.json`:
+```json
+"prototype_iteration": {
+  "enabled": true,
+  "max_rounds": 4,
+  "levels": ["errors", "visual"],
+  "budget_seconds": 300,
+  "pass_threshold": 4
+}
+```
+
+Artifacts land in `factory/prototypes/<wave>/<cell>/iterations/round_NN/`. The loop is skipped gracefully if Playwright is not installed (install with `pip install playwright && playwright install chromium`).
 
 ### Decision Policy
 
