@@ -3,17 +3,15 @@
 Prototype Iteration Loop — Spec 014
 
 Runs a closed feedback loop after prototype_builder_web generates prototype.html:
-  1. Load in headless Playwright browser
-  2. Capture JS errors + screenshots
-  3. Claude vision critique against a fixed rubric
-  4. Claude CLI patches the HTML
-  5. Repeat until passing or budget exhausted
+  1. Load in headless Playwright browser — capture JS errors + DOM checks
+  2. Code-review critique — send HTML source + prototype spec to Claude CLI as text
+  3. Claude CLI patches the HTML targeting identified failures
+  4. Repeat until passing or budget exhausted
 """
 from __future__ import annotations
 
 import json
 import os
-import subprocess
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -29,45 +27,67 @@ RUBRIC_CRITERIA = [
     "readable",
 ]
 
-VISION_PROMPT = """You are evaluating a puzzle game prototype screenshot for playability.
+CODE_REVIEW_PROMPT_TEMPLATE = """You are reviewing a puzzle game prototype HTML file for playability.
 
-Evaluate the two screenshots (initial state and after first tap) against this rubric.
-Return ONLY valid JSON with exactly these keys:
+PROTOTYPE SPEC (what the game should do):
+{spec_section}
 
-{
+CONSOLE ERRORS from running the prototype in a headless browser:
+{errors_section}
+
+DOM STRUCTURAL CHECKS (from Playwright):
+{dom_checks_section}
+
+CURRENT PROTOTYPE HTML SOURCE:
+```html
+{html_source}
+```
+
+Evaluate the prototype against these 5 criteria and return ONLY valid JSON:
+
+{{
   "board_visible":     "pass" | "fail" | "unclear",
   "elements_present":  "pass" | "fail" | "unclear",
   "interactive_hint":  "pass" | "fail" | "unclear",
   "state_changed":     "pass" | "fail" | "unclear",
   "readable":          "pass" | "fail" | "unclear",
-  "notes": "<one sentence summary of the most critical issue, or 'looks good'>"
-}
+  "notes": "<one sentence identifying the most critical missing or broken thing>"
+}}
 
-Criteria definitions:
-- board_visible:    A game board or play area is clearly rendered on screen
-- elements_present: Dock items, queue pieces, or game objects are visible
-- interactive_hint: At least one button or tappable element is visible
-- state_changed:    Something visibly changed between screenshot 1 and screenshot 2
-- readable:         Colors are distinct, text is legible, no overlapping UI elements
+Criteria:
+- board_visible:    HTML renders a visible game board or canvas with actual game content
+- elements_present: Game objects (dock, queue, board cells, pieces) are rendered in the DOM
+- interactive_hint: At least one button or tappable/clickable element exists and is functional
+- state_changed:    Clicking an interactive element changes game state (DOM or canvas updates)
+- readable:         Game layout is not a blank page, placeholder text, or unstyled skeleton
 
-Do not add any other keys or prose. Output raw JSON only."""
+Output raw JSON only — no markdown, no explanation."""
 
 PATCH_PROMPT_TEMPLATE = """You are fixing a puzzle game prototype HTML file.
 
-FAILED RUBRIC CRITERIA:
+FAILED CRITERIA:
 {failed_criteria}
 
 CONSOLE ERRORS:
 {errors_section}
 
-CURRENT PROTOTYPE HTML (may be truncated):
+CRITIC NOTES:
+{critic_notes}
+
+CURRENT PROTOTYPE HTML (may be truncated to {max_chars} chars):
 ```html
 {html_source}
 ```
 
-Produce a corrected version of the complete HTML file that fixes all the issues above.
-Output ONLY the complete corrected HTML file starting with <!doctype html> or <html.
-Do not add explanation or markdown fencing — just the raw HTML."""
+Produce a corrected and improved version of the complete prototype HTML that fixes every \
+failed criterion above. The prototype must:
+- Render an actual game board with visible grid or play area
+- Show interactive elements the player can tap/click
+- Update game state visibly when the player interacts
+- Have no JS runtime errors
+
+Output ONLY the complete corrected HTML file starting with <!doctype html>.
+No markdown fencing, no explanation — raw HTML only."""
 
 
 # ─── Data classes ─────────────────────────────────────────────────────────────
@@ -75,8 +95,8 @@ Do not add explanation or markdown fencing — just the raw HTML."""
 @dataclass
 class BrowserResult:
     errors: list[str]
-    screenshot_initial_path: Path | None
-    screenshot_after_path: Path | None
+    dom_checks: dict[str, str]          # criterion → "pass" | "fail" | "unclear"
+    state_changed: str                  # "pass" | "fail" | "unclear"
     playwright_available: bool = True
 
 
@@ -85,22 +105,21 @@ class CritiqueResult:
     criteria: dict[str, str] = field(default_factory=dict)
     pass_count: int = 0
     notes: str = ""
-    available: bool = True  # False when screenshots missing / vision skipped
+    available: bool = True
 
 
-# ─── T2: Browser check ────────────────────────────────────────────────────────
+# ─── T2: Browser check (DOM-based, no vision) ─────────────────────────────────
 
 def _run_browser_check(html_path: Path, round_dir: Path) -> BrowserResult:
-    """Load prototype in headless Chromium, capture errors and screenshots."""
+    """Load prototype in headless Chromium, capture JS errors and DOM checks."""
     try:
         from playwright.sync_api import sync_playwright  # noqa: PLC0415
     except ImportError:
-        return BrowserResult(errors=[], screenshot_initial_path=None,
-                             screenshot_after_path=None, playwright_available=False)
+        return BrowserResult(errors=[], dom_checks={}, state_changed="unclear",
+                             playwright_available=False)
 
     errors: list[str] = []
-    screenshot_initial = round_dir / "screenshot_initial.png"
-    screenshot_after = round_dir / "screenshot_after_tap.png"
+    dom_checks: dict[str, str] = {}
 
     try:
         with sync_playwright() as pw:
@@ -113,119 +132,132 @@ def _run_browser_check(html_path: Path, round_dir: Path) -> BrowserResult:
 
             page.goto(f"file://{html_path.resolve()}")
             page.wait_for_timeout(1500)
-            page.screenshot(path=str(screenshot_initial))
 
-            # Try clicking the first button; fall back to canvas centre
+            # board_visible: canvas or element with board/grid/game in id/class
+            has_canvas = page.locator("canvas").count() > 0
+            has_board_el = page.locator("[id*=board],[id*=grid],[id*=game],[class*=board],[class*=grid],[class*=game]").count() > 0
+            dom_checks["board_visible"] = "pass" if (has_canvas or has_board_el) else "fail"
+
+            # elements_present: game objects in DOM
+            has_cells = page.locator("[class*=cell],[class*=node],[class*=dock],[class*=piece],[class*=slot],[class*=queue]").count() > 0
+            has_svg = page.locator("svg").count() > 0
+            dom_checks["elements_present"] = "pass" if (has_cells or has_svg or has_canvas) else "fail"
+
+            # interactive_hint: at least one button or clickable element
+            btn_count = page.locator("button:visible, [onclick]:visible, [class*=btn]:visible").count()
+            dom_checks["interactive_hint"] = "pass" if btn_count > 0 else "fail"
+
+            # readable: page has meaningful text content (not blank)
+            body_text = (page.locator("body").inner_text() or "").strip()
+            dom_checks["readable"] = "pass" if len(body_text) > 20 else "fail"
+
+            # state_changed: snapshot DOM/canvas hash before and after a click
+            pre_snapshot = page.locator("body").inner_html()
             try:
-                page.click("button", timeout=1500)
-            except Exception:
-                try:
-                    box = page.locator("canvas").bounding_box()
+                if btn_count > 0:
+                    page.locator("button:visible").first.click(timeout=1500)
+                else:
+                    box = page.locator("canvas").bounding_box() if has_canvas else None
                     if box:
                         page.mouse.click(box["x"] + box["width"] / 2,
                                          box["y"] + box["height"] / 2)
-                except Exception:
-                    pass
-
+            except Exception:
+                pass
             page.wait_for_timeout(600)
-            page.screenshot(path=str(screenshot_after))
+            post_snapshot = page.locator("body").inner_html()
+            state_changed = "pass" if pre_snapshot != post_snapshot else "fail"
+
             browser.close()
 
     except Exception as exc:  # noqa: BLE001
         errors.append(f"[playwright_error] {exc}")
-        return BrowserResult(errors=errors, screenshot_initial_path=None,
-                             screenshot_after_path=None)
+        return BrowserResult(errors=errors, dom_checks={}, state_changed="unclear")
 
-    # Save console_errors.json
     (round_dir / "console_errors.json").write_text(
         json.dumps(errors, indent=2) + "\n", encoding="utf-8"
     )
-
-    return BrowserResult(
-        errors=errors,
-        screenshot_initial_path=screenshot_initial if screenshot_initial.exists() else None,
-        screenshot_after_path=screenshot_after if screenshot_after.exists() else None,
+    (round_dir / "dom_checks.json").write_text(
+        json.dumps(dom_checks, indent=2) + "\n", encoding="utf-8"
     )
 
+    return BrowserResult(errors=errors, dom_checks=dom_checks, state_changed=state_changed)
 
-# ─── T3: Vision critique ──────────────────────────────────────────────────────
 
-def _run_vision_critique(
+# ─── T3: Code review critique ─────────────────────────────────────────────────
+
+def _run_code_review_critique(
+    html_path: Path,
     browser_result: BrowserResult,
     round_dir: Path,
+    profile: dict[str, str],
+    config: dict[str, Any],
+    spec_path: Path | None,
 ) -> CritiqueResult:
-    """Feed screenshots to Claude vision CLI and parse the rubric response."""
-    if not browser_result.playwright_available:
-        return CritiqueResult(available=False)
+    """Send HTML source + DOM check results to Claude CLI for code-level critique."""
 
-    if not browser_result.screenshot_initial_path:
-        return CritiqueResult(available=False, notes="No screenshots captured")
+    # Build spec section
+    spec_section = "(no prototype_spec.md found)"
+    if spec_path and spec_path.exists():
+        spec_text = spec_path.read_text(encoding="utf-8")
+        spec_section = spec_text[:3000] + ("\n[spec truncated]" if len(spec_text) > 3000 else "")
 
-    cli = os.getenv("CLAUDE_CLI_PATH", "claude")
-    timeout = float(os.getenv("PF_CLAUDE_CLI_TIMEOUT_SECONDS", "120"))
+    # Build HTML section
+    html_source = html_path.read_text(encoding="utf-8")
+    max_chars = 5000
+    html_section = html_source[:max_chars] + (f"\n<!-- [truncated at {max_chars} chars] -->"
+                                              if len(html_source) > max_chars else "")
 
-    cmd = [cli, "-p", VISION_PROMPT, "--output-format", "json"]
-    if browser_result.screenshot_initial_path:
-        cmd += ["--image", str(browser_result.screenshot_initial_path)]
-    if browser_result.screenshot_after_path:
-        cmd += ["--image", str(browser_result.screenshot_after_path)]
+    # DOM checks summary
+    dom_lines = [f"- {k}: {v}" for k, v in browser_result.dom_checks.items()]
+    dom_checks_section = "\n".join(dom_lines) if dom_lines else "(playwright unavailable)"
 
-    # Save the patch prompt for audit
-    (round_dir / "patch_prompt.txt").write_text(
-        VISION_PROMPT, encoding="utf-8"
+    errors_section = "\n".join(browser_result.errors[:20]) or "(none)"
+
+    prompt = CODE_REVIEW_PROMPT_TEMPLATE.format(
+        spec_section=spec_section,
+        errors_section=errors_section,
+        dom_checks_section=dom_checks_section,
+        html_source=html_section,
     )
 
+    # Save prompt for audit
+    (round_dir / "critique_prompt.txt").write_text(prompt, encoding="utf-8")
+
     try:
-        result = subprocess.run(
-            cmd, capture_output=True, text=True,
-            timeout=timeout, env=os.environ.copy(),
-        )
-    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
-        return CritiqueResult(available=False, notes=str(exc))
+        raw = call_provider(profile, prompt)
+    except Exception as exc:  # noqa: BLE001
+        return CritiqueResult(available=False, notes=f"provider error: {exc}")
 
-    if result.returncode != 0:
-        return CritiqueResult(
-            available=False,
-            notes=f"claude CLI exited {result.returncode}: {result.stderr[:200]}"
-        )
-
-    # Unwrap --output-format json envelope
-    raw_text = result.stdout
-    try:
-        envelope = json.loads(raw_text)
-        raw_text = envelope.get("result") or envelope.get("content") or raw_text
-    except json.JSONDecodeError:
-        pass
-
-    # Parse rubric JSON
+    # Merge DOM checks with LLM critique
     criteria: dict[str, str] = {}
     notes = ""
     try:
-        # Find first { ... }
-        start = raw_text.find("{")
-        end = raw_text.rfind("}")
+        start = raw.find("{")
+        end = raw.rfind("}")
         if start != -1 and end > start:
-            parsed = json.loads(raw_text[start:end + 1])
+            parsed = json.loads(raw[start:end + 1])
             for key in RUBRIC_CRITERIA:
                 criteria[key] = parsed.get(key, "unclear")
             notes = parsed.get("notes", "")
     except (json.JSONDecodeError, ValueError):
-        for key in RUBRIC_CRITERIA:
-            criteria[key] = "unclear"
-        notes = "failed to parse vision response"
+        # Fall back to DOM checks only
+        criteria = dict(browser_result.dom_checks)
+        criteria["state_changed"] = browser_result.state_changed
+        notes = "failed to parse LLM critique — using DOM checks only"
+
+    # Override state_changed with the actual Playwright measurement (more reliable)
+    if browser_result.playwright_available and browser_result.state_changed != "unclear":
+        criteria["state_changed"] = browser_result.state_changed
 
     pass_count = sum(1 for v in criteria.values() if v == "pass")
 
-    critique = CritiqueResult(criteria=criteria, pass_count=pass_count, notes=notes)
     (round_dir / "critique.json").write_text(
-        json.dumps({
-            "criteria": criteria,
-            "pass_count": pass_count,
-            "notes": notes,
-        }, indent=2) + "\n",
+        json.dumps({"criteria": criteria, "pass_count": pass_count, "notes": notes},
+                   indent=2) + "\n",
         encoding="utf-8",
     )
-    return critique
+
+    return CritiqueResult(criteria=criteria, pass_count=pass_count, notes=notes)
 
 
 # ─── T4: Patch prototype ──────────────────────────────────────────────────────
@@ -237,34 +269,29 @@ def _patch_prototype(
     profile: dict[str, str],
     config: dict[str, Any],
 ) -> str:
-    """Ask Claude/Codex to fix the prototype. Returns patched HTML string."""
+    """Ask Claude to rewrite the prototype fixing failed criteria."""
     current_html = html_path.read_text(encoding="utf-8")
-
-    # Truncate very long sources
     max_chars = 6000
-    if len(current_html) > max_chars:
-        html_source = current_html[:max_chars] + "\n<!-- [source truncated for context window] -->"
-    else:
-        html_source = current_html
+    html_source = (current_html[:max_chars] + f"\n<!-- [truncated at {max_chars} chars] -->"
+                   if len(current_html) > max_chars else current_html)
 
     failed = [k for k, v in critique.criteria.items() if v == "fail"]
-    failed_criteria = "\n".join(f"- {c}" for c in failed) if failed else "(none from rubric)"
-
-    errors_section = "\n".join(browser_result.errors[:20]) if browser_result.errors else "(none)"
+    failed_criteria = "\n".join(f"- {c}" for c in failed) if failed else "(none)"
+    errors_section = "\n".join(browser_result.errors[:20]) or "(none)"
 
     prompt = PATCH_PROMPT_TEMPLATE.format(
         failed_criteria=failed_criteria,
         errors_section=errors_section,
+        critic_notes=critique.notes,
+        max_chars=max_chars,
         html_source=html_source,
     )
 
     try:
-        raw = call_provider(profile, prompt)
-    except Exception as exc:  # noqa: BLE001
-        return current_html  # return original on provider failure
+        raw = call_provider(profile, prompt).strip()
+    except Exception:  # noqa: BLE001
+        return current_html
 
-    # Extract HTML from response
-    raw = raw.strip()
     for marker in ("<!doctype", "<!DOCTYPE", "<html", "<HTML"):
         idx = raw.find(marker)
         if idx != -1:
@@ -273,7 +300,7 @@ def _patch_prototype(
                 return raw[idx:end_idx + 7]
             return raw[idx:]
 
-    return current_html  # fallback: return unchanged
+    return current_html
 
 
 # ─── T5: Main loop ────────────────────────────────────────────────────────────
@@ -287,6 +314,7 @@ def run_iteration_loop(
     iteration_config: dict[str, Any],
     profile: dict[str, str],
     config: dict[str, Any],
+    spec_path: Path | None = None,
 ) -> dict[str, Any]:
     """
     Run the prototype iteration loop.
@@ -309,34 +337,30 @@ def run_iteration_loop(
         round_dir = iterations_dir / round_label
         round_dir.mkdir(parents=True, exist_ok=True)
 
-        # Level 1 — browser errors
-        browser_result = BrowserResult(errors=[], screenshot_initial_path=None,
-                                       screenshot_after_path=None, playwright_available=False)
+        # Level 1 + DOM checks via Playwright
+        browser_result = BrowserResult(errors=[], dom_checks={}, state_changed="unclear",
+                                       playwright_available=False)
         if "errors" in levels or "visual" in levels:
             browser_result = _run_browser_check(html_path, round_dir)
 
         l1_errors = len(browser_result.errors)
         l1_pass = l1_errors == 0 and browser_result.playwright_available
 
-        # Level 2 — vision critique
+        # Level 2 — code review critique
         critique = CritiqueResult(available=False)
-        if "visual" in levels and browser_result.playwright_available:
-            critique = _run_vision_critique(browser_result, round_dir)
+        if "visual" in levels:
+            critique = _run_code_review_critique(
+                html_path, browser_result, round_dir, profile, config, spec_path
+            )
 
         l2_pass_count = critique.pass_count if critique.available else None
-        l2_pass = (
-            critique.available
-            and critique.pass_count >= pass_threshold
-        )
 
-        # Determine overall round result
-        check_visual = "visual" in levels
+        # Determine round result
         if not browser_result.playwright_available:
-            # Playwright not installed — skip both levels, mark as passed to avoid infinite patching
             round_passed = True
             decision = "skip_no_playwright"
-        elif check_visual:
-            round_passed = l1_pass and l2_pass
+        elif "visual" in levels:
+            round_passed = l1_pass and critique.available and critique.pass_count >= pass_threshold
             decision = "pass" if round_passed else "patch"
         else:
             round_passed = l1_pass
@@ -347,34 +371,28 @@ def run_iteration_loop(
             "l1_errors": l1_errors if browser_result.playwright_available else "n/a",
             "l2_pass_count": l2_pass_count if critique.available else "n/a",
             "decision": decision,
-            "notes": critique.notes if critique.available else (
-                "playwright unavailable" if not browser_result.playwright_available else ""
-            ),
+            "notes": (critique.notes if critique.available else
+                      ("playwright unavailable" if not browser_result.playwright_available else "")),
         })
 
         if round_passed:
             passed = True
             break
 
-        # Budget check
-        elapsed = time.monotonic() - start_time
-        if elapsed >= budget_seconds:
+        if time.monotonic() - start_time >= budget_seconds:
             log_rows[-1]["decision"] = "budget_exceeded"
             break
 
-        # Patch
+        # Patch and write for next round
         if round_num < max_rounds:
             patched_html = _patch_prototype(html_path, browser_result, critique, profile, config)
-            # Save patched version in round dir for audit
             (round_dir / "prototype_patched.html").write_text(patched_html, encoding="utf-8")
-            # Overwrite canonical prototype
             html_path.write_text(patched_html, encoding="utf-8")
 
     # Write iteration_log.md
     log_path = iterations_dir / "iteration_log.md"
     _write_iteration_log(log_path, log_rows, wave_id, cell_id)
 
-    # Write metadata for log
     meta_path = Path(str(log_path) + ".metadata.json")
     write_metadata(
         metadata_path=meta_path,

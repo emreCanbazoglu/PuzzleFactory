@@ -237,6 +237,7 @@ def run_cell(repo_root: Path, cfg: dict, wave_id: str, cell: dict) -> list[str]:
     iteration_cfg = cfg.get("prototype_iteration", {})
     if iteration_cfg.get("enabled"):
         iteration_profile = resolve_profile_for_role(cfg, "fusion_director")
+        spec_path = cell_output_path(repo_root, "specs", wave_id, cid, "prototype_spec.md")
         iter_result = run_iteration_loop(
             html_path=prototype_path,
             repo_root=repo_root,
@@ -245,6 +246,7 @@ def run_cell(repo_root: Path, cfg: dict, wave_id: str, cell: dict) -> list[str]:
             iteration_config=iteration_cfg,
             profile=iteration_profile,
             config=cfg,
+            spec_path=spec_path,
         )
         outputs.append(iter_result["log_path"])
 
