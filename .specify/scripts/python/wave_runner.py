@@ -4,50 +4,269 @@ import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
+from agent_runtime import (
+    deterministic_scores,
+    generate_director_brief,
+    generate_director_plan_with_model,
+    generate_human_review_stub,
+    generate_prototype_html,
+    generate_text_artifact,
+    render_director_plan,
+    write_metadata,
+)
+from game_library import resolve_games
+from model_router import resolve_profile_for_role
 from path_guard import cell_output_path
+from prototype_iteration_runner import run_iteration_loop
 from run_state import add_cell_artifact, load_or_init_state, now_iso, set_cell_status, write_state
 
 
-def write_text(path: Path, content: str) -> str:
+def _write_text(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
-    return str(path)
 
 
-def run_cell(repo_root: Path, wave_id: str, cell: dict) -> list[str]:
+def _metadata_path_for(artifact_path: Path) -> Path:
+    return artifact_path.with_suffix(artifact_path.suffix + ".metadata.json")
+
+
+def _generate_stage_text(
+    *,
+    repo_root: Path,
+    cfg: dict,
+    wave_id: str,
+    cell: dict,
+    role: str,
+    artifact_type: str,
+    area: str,
+    filename: str,
+    context: dict,
+) -> tuple[str, str]:
+    profile = resolve_profile_for_role(cfg, role)
+    content, fallback_used, template_name = generate_text_artifact(
+        repo_root=repo_root,
+        role=role,
+        artifact_type=artifact_type,
+        context=context,
+        profile=profile,
+        config=cfg,
+    )
+
+    artifact_path = cell_output_path(repo_root, area, wave_id, cell["cell_id"], filename)
+    _write_text(artifact_path, content)
+
+    meta_path = _metadata_path_for(artifact_path)
+    write_metadata(
+        metadata_path=meta_path,
+        wave_id=wave_id,
+        cell_id=cell["cell_id"],
+        role=role,
+        template_name=template_name,
+        profile=profile,
+        artifact_path=artifact_path,
+        fallback_used=fallback_used,
+    )
+    return str(artifact_path), str(meta_path)
+
+
+def run_cell(repo_root: Path, cfg: dict, wave_id: str, cell: dict) -> list[str]:
     cid = cell["cell_id"]
-    domain = cell["prototype_domain"]
+    source_games = resolve_games(repo_root, cell.get("source_game_ids", []))
+    context = {
+        "wave_id": wave_id,
+        "cell_id": cid,
+        "discovery_domain": cell.get("discovery_domain", "hybrid"),
+        "prototype_domain": cell.get("prototype_domain", "hybrid"),
+        "concept_count": cell.get("concept_count", 3),
+        "source_games": source_games,
+    }
 
-    outputs = []
-    outputs.append(
-        write_text(
-            cell_output_path(repo_root, "mechanics", wave_id, cid, "mechanic_sheet.md"),
-            f"# Mechanic Sheet\n\nGame: {cid}\nCore Verb: TBD\nFailure Mode: TBD\nDepth Source: TBD\n",
-        )
+    outputs: list[str] = []
+
+    director_profile = resolve_profile_for_role(cfg, "fusion_director")
+    director_plan, director_plan_fallback = generate_director_plan_with_model(
+        repo_root=repo_root,
+        context=context,
+        profile=director_profile,
+        config=cfg,
     )
-    outputs.append(
-        write_text(
-            cell_output_path(repo_root, "concepts", wave_id, cid, "concept_card.md"),
-            f"# Concept Card\n\nConcept Name: {cid}_{domain}_concept\nMain Interaction: TBD\nObjective: TBD\n",
-        )
+    context["director_plan"] = director_plan
+    context["director_plan_markdown"] = render_director_plan(director_plan)
+    context["selected_variation_id"] = director_plan.get("selected_build_variation_id")
+    selected_variation = None
+    for variation in director_plan.get("variation_targets", []):
+        if variation.get("id") == context["selected_variation_id"]:
+            selected_variation = variation
+            break
+    if selected_variation is not None:
+        context["selected_variation"] = selected_variation
+    director_plan_path = cell_output_path(repo_root, "concepts", wave_id, cid, "director_plan.md")
+    _write_text(director_plan_path, context["director_plan_markdown"])
+    outputs.append(str(director_plan_path))
+    director_plan_meta = _metadata_path_for(director_plan_path)
+    write_metadata(
+        metadata_path=director_plan_meta,
+        wave_id=wave_id,
+        cell_id=cid,
+        role="fusion_director",
+        template_name="director_plan_model" if not director_plan_fallback else "director_plan_scripted_fallback",
+        profile=director_profile,
+        artifact_path=director_plan_path,
+        fallback_used=director_plan_fallback,
     )
-    outputs.append(
-        write_text(
-            cell_output_path(repo_root, "specs", wave_id, cid, "prototype_spec.md"),
-            "# Prototype Spec\n\nCore Loop: TBD\nWin Condition: TBD\nLose Condition: TBD\n",
-        )
+    outputs.append(str(director_plan_meta))
+    director_plan_json_path = cell_output_path(repo_root, "concepts", wave_id, cid, "director_plan.json")
+    director_plan_json_path.write_text(json.dumps(director_plan, indent=2) + "\n", encoding="utf-8")
+    outputs.append(str(director_plan_json_path))
+
+    director_brief = generate_director_brief(context)
+    context["director_brief"] = director_brief
+    director_path = cell_output_path(repo_root, "concepts", wave_id, cid, "director_brief.md")
+    _write_text(director_path, director_brief)
+    outputs.append(str(director_path))
+    director_meta = _metadata_path_for(director_path)
+    write_metadata(
+        metadata_path=director_meta,
+        wave_id=wave_id,
+        cell_id=cid,
+        role="fusion_director",
+        template_name="director_brief_builtin",
+        profile=resolve_profile_for_role(cfg, "fusion_director"),
+        artifact_path=director_path,
+        fallback_used=True,
     )
-    outputs.append(
-        write_text(
-            cell_output_path(repo_root, "prototypes", wave_id, cid, "prototype_stub.html"),
-            "<!doctype html><html><body><h1>Prototype Stub</h1></body></html>",
-        )
+    outputs.append(str(director_meta))
+
+    # Stage 1: mechanic extraction
+    ap, mp = _generate_stage_text(
+        repo_root=repo_root,
+        cfg=cfg,
+        wave_id=wave_id,
+        cell=cell,
+        role="deconstructor",
+        artifact_type="mechanic_sheet",
+        area="mechanics",
+        filename="mechanic_sheet.md",
+        context=context,
     )
-    outputs.append(
-        write_text(
-            cell_output_path(repo_root, "evaluations", wave_id, cid, "evaluation_report.md"),
-            "# Evaluation Report\n\nClarity: 3.5\nDepth: 3.4\nRecommendation: Iterate\n",
-        )
+    outputs.extend([ap, mp])
+
+    review_content, review_template = generate_human_review_stub(repo_root, context)
+    review_path = cell_output_path(repo_root, "evaluations", wave_id, cid, "human_review.md")
+    _write_text(review_path, review_content)
+    outputs.append(str(review_path))
+    review_meta = _metadata_path_for(review_path)
+    write_metadata(
+        metadata_path=review_meta,
+        wave_id=wave_id,
+        cell_id=cid,
+        role="human_feedback",
+        template_name=review_template,
+        profile={"name": "human", "provider": "human", "model": "n/a"},
+        artifact_path=review_path,
+        fallback_used=True,
     )
+    outputs.append(str(review_meta))
+
+    # Stage 2: concept design from ranked director variations
+    concept_paths: list[str] = []
+    concept_variations = director_plan.get("variation_targets", [])[: context["concept_count"]]
+    if not concept_variations:
+        concept_variations = [{"id": "variation_01", "role": "conservative"}]
+    for idx, variation in enumerate(concept_variations, start=1):
+        variation_context = dict(context)
+        variation_context["selected_variation_id"] = variation.get("id")
+        variation_context["selected_variation"] = variation
+        role = (
+            "fusion_designer_novelty"
+            if variation.get("role") == "novelty"
+            else "fusion_designer_conservative"
+        )
+        ap, mp = _generate_stage_text(
+            repo_root=repo_root,
+            cfg=cfg,
+            wave_id=wave_id,
+            cell=cell,
+            role=role,
+            artifact_type="concept_card",
+            area="concepts",
+            filename=f"concept_card_{idx:02d}.md",
+            context=variation_context,
+        )
+        outputs.extend([ap, mp])
+        concept_paths.append(ap)
+
+    chosen_path = cell_output_path(repo_root, "concepts", wave_id, cid, "concept_card.md")
+    chosen_content = Path(concept_paths[0]).read_text(encoding="utf-8")
+    _write_text(chosen_path, chosen_content)
+    outputs.append(str(chosen_path))
+    context["selected_variation_id"] = concept_variations[0].get("id")
+    context["selected_variation"] = concept_variations[0]
+
+    # Stage 3: prototype spec
+    ap, mp = _generate_stage_text(
+        repo_root=repo_root,
+        cfg=cfg,
+        wave_id=wave_id,
+        cell=cell,
+        role="prototype_spec_writer",
+        artifact_type="prototype_spec",
+        area="specs",
+        filename="prototype_spec.md",
+        context=context,
+    )
+    outputs.extend([ap, mp])
+
+    # Stage 4: prototype build (web)
+    prototype_path = cell_output_path(repo_root, "prototypes", wave_id, cid, "prototype.html")
+    _write_text(prototype_path, generate_prototype_html(context))
+    outputs.append(str(prototype_path))
+    prototype_meta = _metadata_path_for(prototype_path)
+    write_metadata(
+        metadata_path=prototype_meta,
+        wave_id=wave_id,
+        cell_id=cid,
+        role="prototype_builder_web",
+        template_name="prototype_html_builtin",
+        profile=resolve_profile_for_role(cfg, "prototype_builder_web"),
+        artifact_path=prototype_path,
+        fallback_used=True,
+    )
+    outputs.append(str(prototype_meta))
+
+    # Stage 4b: prototype iteration loop (optional)
+    iteration_cfg = cfg.get("prototype_iteration", {})
+    if iteration_cfg.get("enabled"):
+        iteration_profile = resolve_profile_for_role(cfg, "fusion_director")
+        spec_path = cell_output_path(repo_root, "specs", wave_id, cid, "prototype_spec.md")
+        iter_result = run_iteration_loop(
+            html_path=prototype_path,
+            repo_root=repo_root,
+            wave_id=wave_id,
+            cell_id=cid,
+            iteration_config=iteration_cfg,
+            profile=iteration_profile,
+            config=cfg,
+            spec_path=spec_path,
+        )
+        outputs.append(iter_result["log_path"])
+
+    # Stage 5: evaluation
+    ap, mp = _generate_stage_text(
+        repo_root=repo_root,
+        cfg=cfg,
+        wave_id=wave_id,
+        cell=cell,
+        role="prototype_critic",
+        artifact_type="evaluation_report",
+        area="evaluations",
+        filename="evaluation_report.md",
+        context=context,
+    )
+    outputs.extend([ap, mp])
+
+    # Scorecard for decision engine
+    score_seed = "-".join(game["id"] for game in source_games)
+    scores = deterministic_scores(cid, score_seed)
     scorecard_path = cell_output_path(repo_root, "scorecards", wave_id, cid, "scorecard.json")
     scorecard_path.write_text(
         json.dumps(
@@ -55,15 +274,9 @@ def run_cell(repo_root: Path, wave_id: str, cell: dict) -> list[str]:
                 "wave_id": wave_id,
                 "cell_id": cid,
                 "concept_id": f"{cid}_concept_01",
-                "scores": {
-                    "clarity": 3.5,
-                    "depth": 3.4,
-                    "level_scalability": 3.6,
-                    "production_feasibility": 3.8,
-                    "retention_potential": 3.2,
-                    "novelty": 3.1,
-                },
-                "prototype_domain": domain,
+                "scores": scores,
+                "prototype_domain": context["prototype_domain"],
+                "source_games": [game["name"] for game in source_games],
                 "playable": True,
             },
             indent=2,
@@ -72,6 +285,7 @@ def run_cell(repo_root: Path, wave_id: str, cell: dict) -> list[str]:
         encoding="utf-8",
     )
     outputs.append(str(scorecard_path))
+
     return outputs
 
 
@@ -91,20 +305,20 @@ def main() -> int:
     state["status"] = "running"
     write_state(state_path, state)
 
-    futures = {}
+    futures: dict = {}
     with ThreadPoolExecutor(max_workers=len(cells)) as ex:
         for cell in cells:
             cid = cell["cell_id"]
             set_cell_status(state, cid, "running", "cell_generation")
             write_state(state_path, state)
-            futures[ex.submit(run_cell, repo_root, wave_id, cell)] = cid
+            futures[ex.submit(run_cell, repo_root, cfg, wave_id, cell)] = cid
 
         for future in as_completed(futures):
             cid = futures[future]
             try:
                 artifact_paths = future.result()
-                for ap in artifact_paths:
-                    add_cell_artifact(state, cid, ap)
+                for artifact_path in artifact_paths:
+                    add_cell_artifact(state, cid, artifact_path)
                 set_cell_status(state, cid, "completed", "cell_evaluation")
             except Exception as exc:
                 set_cell_status(state, cid, "failed", "cell_generation", str(exc))

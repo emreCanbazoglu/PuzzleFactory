@@ -1,0 +1,224 @@
+[
+  {
+    "id": "ios-6751056652-pixel-flow",
+    "name": "Pixel Flow!",
+    "genre": "games",
+    "mechanics": [
+      "queue_sort",
+      "path_creation",
+      "limited_moves"
+    ],
+    "description": "Puzzle game where the player taps colored shooters from the tops of dock queues and sends them around a surrounding conveyor to fire matching bullets into a blocked pixel board.",
+    "detail_text": "The board is surrounded by a conveyor and fed by multi-lane dock queues. The player can only tap the front shooter at the top of each dock lane. Once dispatched, a shooter travels one full loop around the board and fires inward when it crosses attack lanes. Along the bottom edge it fires one bullet per column; along the side and top lanes it fires one bullet per row. A bullet only removes a matching colored cube if that cube is currently exposed from the outside in, so inner cubes stay protected until outer cubes are cleared. Shooters come in different colors and bullet counts, which means the player is solving both color matching and quantity efficiency at the same time. When a shooter finishes its loop with bullets remaining, it falls back into one of five overflow slots if a slot is free. If all slots are full and another shooter needs to fall back, the run fails. The level is won when all cubes on the board are cleared.",
+    "board_type": "grid",
+    "session_length": "3-5 minutes",
+    "store_links": {
+      "app_store": "https://apps.apple.com/us/app/pixel-flow/id6751056652?uo=4",
+      "google_play": null
+    },
+    "screenshot_urls": [
+      "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/72/93/5c/72935c74-649f-189d-8767-7cf3587f2243/Image_1.jpg/300x650bb.webp",
+      "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/c3/16/2e/c3162e97-c9b2-b52e-3fc4-348da2a758eb/Image_2.jpg/300x650bb.webp"
+    ],
+    "source_metadata": {
+      "source": "store_ingestion",
+      "source_link": "https://apps.apple.com/us/app/pixel-flow/id6751056652?uo=2",
+      "provider": "app_store",
+      "ingested_at": "2026-03-09"
+    },
+    "human_notes": {
+      "winning_points": [
+        "The board starts as a readable visual mass and feels satisfying as outer cubes peel away and the whole image gets cleaned up.",
+        "Choosing the exact shooter color and bullet count for the current exposed board state creates smart efficiency decisions instead of blind matching.",
+        "Queue and slot pressure make every dispatch matter because a bad order can clog the system before the board is solved."
+      ],
+      "adopt": [
+        "Surrounding conveyor frame",
+        "Dock and slot pressure",
+        "Visual payoff when the route is finally correct"
+      ],
+      "avoid": [
+        "Pure cosmetic pixel theme dependence"
+      ],
+      "main_goal": "Clear the full pixel board by dispatching the right colored shooters in the right order before slot overflow causes failure.",
+      "stress_points": [
+        "Slot overflow when looping shooters return with leftover bullets",
+        "Top-of-queue restriction because the player can only tap the front shooter in each dock lane",
+        "Sending the wrong color or bullet count for the currently exposed outer layer",
+        "Clearing weak front shooters first to bring the needed color to the top without ruining the future board state"
+      ],
+      "fun_points": [
+        "Watching a correctly chosen shooter strip the exposed outer layer cleanly",
+        "Board cleanup from outside to inside as blocked targets become reachable",
+        "Manipulating queue order to surface the exact shooter needed for the next board state"
+      ]
+    },
+    "last_verified_at": "2026-03-09"
+  },
+  {
+    "id": "ios-6471490579-screw-jam",
+    "name": "Screw Jam",
+    "genre": "games",
+    "mechanics": [
+      "sequence_constraint",
+      "restricted_space",
+      "limited_moves"
+    ],
+    "description": "Puzzle game where the player taps exposed screws from stacked plates and must remove them in an order that feeds the current target boxes efficiently while opening more of the layered board.",
+    "detail_text": "The board is made of overlapping shaped plates fastened by colored screws. The player only interacts with screws that are currently exposed and reachable on the top layer. At the top of the screen there is a current set of colored target boxes, each with capacity for 3 screws. When the player removes a screw, it automatically goes into a matching target box if that color is currently present. If no matching target box exists, the screw goes into one of 5 temporary overflow slots if a slot is open. A plate falls away when all screws holding it are removed, which reveals new screws and changes the future access order. The player is not choosing boxes directly; the puzzle is entirely about choosing which exposed screw to remove next so that target boxes fill cleanly, overflow slots stay available, and future access chains remain healthy. The only fail condition is when all 5 overflow slots are full and the player removes a screw that does not match any current target box. The level is won when all screws are cleared from the layered board.",
+    "board_type": "grid",
+    "session_length": "3-5 minutes",
+    "store_links": {
+      "app_store": "https://apps.apple.com/us/app/screw-jam/id6471490579?uo=4",
+      "google_play": null
+    },
+    "screenshot_urls": [
+      "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/df/d8/f8/dfd8f83c-3372-a656-e28c-ebb942f95da0/4abac71e-70c2-4a9c-a257-1aff7a11a745_13.png/392x696bb.png",
+      "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/a5/59/52/a55952d0-508f-78f5-cfe9-d050a917fde5/92fa6a65-f296-4e69-9313-63c2b3542a8c_33.png/392x696bb.png"
+    ],
+    "source_metadata": {
+      "source": "store_ingestion",
+      "source_link": "https://apps.apple.com/tr/app/screw-jam/id6471490579",
+      "provider": "app_store",
+      "ingested_at": "2026-03-09",
+      "inference_confidence": "high"
+    },
+    "human_notes": {
+      "winning_points": [
+        "The strongest satisfaction comes from finding the hidden legal removal order inside a crowded layered board.",
+        "A good removal often does three things at once: fills a current target box, preserves overflow capacity, and opens a better future access chain.",
+        "When a cleared plate falls away and reveals a fresh layer of screws, the board gives a strong tactile and strategic payoff."
+      ],
+      "adopt": [
+        "Layered plate board layout",
+        "Colored screw readability",
+        "Exposure-order decision making",
+        "Physics of plate falling when screws are removed"
+      ],
+      "avoid": [
+        "Random blocker removal with no access logic",
+        "Boards where every visible screw is equally good"
+      ],
+    "main_goal": "Clear the layered screw board by choosing an exposure order that fills current target boxes cleanly and avoids overflow-slot failure.",
+    "stress_points": [
+      "All 5 overflow slots are precious because unmatched screws are only safe while space remains",
+      "Removing the wrong exposed screw can preserve the current board but damage the future access chain",
+      "Current target-box colors create short-term pressure that can conflict with the best long-term plate-collapse order"
+    ],
+    "fun_points": [
+      "Revealing hidden screws by collapsing a finished plate",
+      "Completing a target box cleanly instead of leaking screws into overflow",
+      "Finding removals that simultaneously solve the current box state and improve the next layer"
+    ]
+    },
+    "last_verified_at": "2026-03-09"
+  },
+  {
+    "id": "ios-1514542157-water-sort-puzzle",
+    "name": "Water Sort Puzzle",
+    "genre": "games",
+    "mechanics": [
+      "container_sort",
+      "color_sort",
+      "restricted_space",
+      "limited_moves"
+    ],
+    "description": null,
+    "detail_text": null,
+    "board_type": "container",
+    "session_length": "3-5 minutes",
+    "store_links": {
+      "app_store": "https://apps.apple.com/us/app/water-sort-puzzle/id1514542157?uo=4",
+      "google_play": null
+    },
+    "screenshot_urls": [
+      "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource122/v4/2f/7a/48/2f7a4823-562b-3bd4-d35c-39e30c271e75/dd6cbb98-d86c-4f6f-9407-592fe09e19d5_WSP_SCR_1_V28.1_BGNight_Castle_1242x2208.jpg/392x696bb.jpg"
+    ],
+    "source_metadata": {
+      "source": "store_ingestion",
+      "source_link": "https://apps.apple.com/us/app/water-sort-puzzle/id1514542157",
+      "provider": "app_store",
+      "ingested_at": "2026-03-09"
+    },
+    "human_notes": {
+      "winning_points": [],
+      "adopt": [],
+      "avoid": [],
+      "main_goal": "",
+      "stress_points": [],
+      "fun_points": []
+    },
+    "last_verified_at": "2026-03-09"
+  },
+  {
+    "id": "ios-1482155847-royal-match",
+    "name": "Royal Match",
+    "genre": "games",
+    "mechanics": [
+      "objective_variation",
+      "limited_moves"
+    ],
+    "description": null,
+    "detail_text": null,
+    "board_type": "grid",
+    "session_length": "3-5 minutes",
+    "store_links": {
+      "app_store": "https://apps.apple.com/us/app/royal-match/id1482155847?uo=4",
+      "google_play": null
+    },
+    "screenshot_urls": [
+      "https://is1-ssl.mzstatic.com/image/thumb/Purple116/v4/89/2e/1a/892e1a61-b669-b9d3-26ee-d5b2fcc01934/edede7e9-6c2e-401d-804d-32d96e7b4641_iphone-8.jpg/392x696bb.jpg"
+    ],
+    "source_metadata": {
+      "source": "store_ingestion",
+      "source_link": "https://apps.apple.com/us/app/royal-match/id1482155847",
+      "provider": "app_store",
+      "ingested_at": "2026-03-09"
+    },
+    "human_notes": {
+      "winning_points": [],
+      "adopt": [],
+      "avoid": [],
+      "main_goal": "",
+      "stress_points": [],
+      "fun_points": []
+    },
+    "last_verified_at": "2026-03-09"
+  },
+  {
+    "id": "ios-1617391485-block-blast",
+    "name": "Block Blast!",
+    "genre": "games",
+    "mechanics": [
+      "tile_cascade",
+      "block_push",
+      "limited_moves"
+    ],
+    "description": null,
+    "detail_text": null,
+    "board_type": "grid",
+    "session_length": "3-5 minutes",
+    "store_links": {
+      "app_store": "https://apps.apple.com/us/app/block-blast/id1617391485?uo=4",
+      "google_play": null
+    },
+    "screenshot_urls": [
+      "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/2a/76/ee/2a76ee57-90a6-9c88-7393-b77afd3b6508/4ac25f40-0f18-43c2-8be8-b3d2018fe240_2048X2732_1.png/576x768bb.png"
+    ],
+    "source_metadata": {
+      "source": "store_ingestion",
+      "source_link": "https://apps.apple.com/us/app/block-blast/id1617391485",
+      "provider": "app_store",
+      "ingested_at": "2026-03-09"
+    },
+    "human_notes": {
+      "winning_points": [],
+      "adopt": [],
+      "avoid": [],
+      "main_goal": "",
+      "stress_points": [],
+      "fun_points": []
+    },
+    "last_verified_at": "2026-03-09"
+  }
+]

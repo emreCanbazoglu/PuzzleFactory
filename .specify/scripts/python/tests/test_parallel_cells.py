@@ -15,6 +15,7 @@ class TestParallelCells(unittest.TestCase):
         for cell in state["cell_states"]:
             self.assertEqual(cell["status"], "completed")
             self.assertGreater(len(cell["artifacts"]), 0)
+            self.assertTrue(any(path.endswith("human_review.md") for path in cell["artifacts"]))
 
 
 if __name__ == "__main__":

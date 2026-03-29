@@ -29,6 +29,11 @@ def validate(path: Path) -> None:
         for key in ("cell_id", "discovery_domain", "prototype_domain"):
             if not isinstance(cell.get(key), str) or not cell[key].strip():
                 fail(f"cells[{idx}].{key} must be a non-empty string")
+        source_game_ids = cell.get("source_game_ids")
+        if not isinstance(source_game_ids, list) or len(source_game_ids) < 2:
+            fail(f"cells[{idx}].source_game_ids must be an array with at least 2 game ids")
+        if any(not isinstance(game_id, str) or not game_id.strip() for game_id in source_game_ids):
+            fail(f"cells[{idx}].source_game_ids must contain non-empty strings")
         concept_count = cell.get("concept_count")
         if not isinstance(concept_count, int) or concept_count < 1:
             fail(f"cells[{idx}].concept_count must be integer >= 1")
@@ -50,6 +55,29 @@ def validate(path: Path) -> None:
     if not isinstance(decision, dict):
         fail("decision_policy must be an object")
 
+    models = data.get("models")
+    if models is not None:
+        if not isinstance(models, dict):
+            fail("models must be an object when provided")
+        for key in ("cloud", "local"):
+            if key in models:
+                profile = models[key]
+                if not isinstance(profile, dict):
+                    fail(f"models.{key} must be an object")
+                provider = profile.get("provider")
+                if provider is not None and provider not in {"openai", "ollama", "mock"}:
+                    fail(f"models.{key}.provider must be one of openai|ollama|mock")
+                model = profile.get("model")
+                if model is not None and (not isinstance(model, str) or not model.strip()):
+                    fail(f"models.{key}.model must be a non-empty string when provided")
+
+    execution = data.get("execution")
+    if execution is not None:
+        if not isinstance(execution, dict):
+            fail("execution must be an object when provided")
+        if "allow_mock_fallback" in execution and not isinstance(execution["allow_mock_fallback"], bool):
+            fail("execution.allow_mock_fallback must be boolean")
+
     human = data.get("human_feedback")
     if human is not None:
         if not isinstance(human, dict):
@@ -61,6 +89,31 @@ def validate(path: Path) -> None:
         timeout = human.get("timeout_hours")
         if not isinstance(timeout, int) or timeout < 0:
             fail("human_feedback.timeout_hours must be integer >= 0")
+
+    proto_iter = data.get("prototype_iteration")
+    if proto_iter is not None:
+        if not isinstance(proto_iter, dict):
+            fail("prototype_iteration must be an object when provided")
+        if "enabled" in proto_iter and not isinstance(proto_iter["enabled"], bool):
+            fail("prototype_iteration.enabled must be boolean")
+        if "max_rounds" in proto_iter and (
+            not isinstance(proto_iter["max_rounds"], int) or proto_iter["max_rounds"] < 1
+        ):
+            fail("prototype_iteration.max_rounds must be integer >= 1")
+        if "pass_threshold" in proto_iter and (
+            not isinstance(proto_iter["pass_threshold"], int) or proto_iter["pass_threshold"] < 0
+        ):
+            fail("prototype_iteration.pass_threshold must be integer >= 0")
+        if "budget_seconds" in proto_iter and (
+            not isinstance(proto_iter["budget_seconds"], (int, float))
+            or proto_iter["budget_seconds"] <= 0
+        ):
+            fail("prototype_iteration.budget_seconds must be a positive number")
+        if "levels" in proto_iter:
+            allowed_levels = {"errors", "visual", "mechanic"}
+            for lv in proto_iter["levels"]:
+                if lv not in allowed_levels:
+                    fail(f"prototype_iteration.levels contains unknown level '{lv}'")
 
     print(f"OK: run config valid -> {path}")
 
